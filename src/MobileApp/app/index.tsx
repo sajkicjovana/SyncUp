@@ -11,8 +11,7 @@ import {
 import { Link, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Buffer } from 'buffer';
+import { discardStartupSession, restoreSession } from '../src/di/auth';
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -23,23 +22,14 @@ export default function HomeScreen() {
     setSelectedLang(i18n.language === 'sr' ? 'sr' : 'en');
 
     const checkToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (token) {
-          const [, payloadBase64] = token.split('.');
-          const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8');
-          const decodedPayload = JSON.parse(payloadJson);
-          const currentTime = Math.floor(Date.now() / 1000);
-
-          if (decodedPayload.exp && decodedPayload.exp > currentTime) {
-            router.replace('./(tabs)/events');
-          } else {
-            await AsyncStorage.removeItem('token');
-          }
+      const result = await restoreSession();
+      if (result.status === 'authenticated') {
+        try {
+          router.replace('./(tabs)/events');
+        } catch {
+          // Preserve the baseline cleanup if startup navigation throws.
+          await discardStartupSession();
         }
-      } catch (error) {
-        //console.log('Token check failed:', error);
-        await AsyncStorage.removeItem('token');
       }
     };
 

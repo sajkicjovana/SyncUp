@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { router } from 'expo-router';
 import { useFavorites } from './context/FavoriteContext';
-import { API_URL } from '../config';
-import { apiCall } from '../config';
+import { signIn } from '../src/di/auth';
 import {
   View,
   Text,
@@ -11,7 +10,6 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen() {
@@ -22,81 +20,38 @@ export default function LoginScreen() {
   const { loadFavorites } = useFavorites();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert(t('error'), t('fillAllFields'));
-      return;
-    }
-
-    const isValidEmail = email.includes('@');
-    if (!isValidEmail) {
-      Alert.alert(t('loginFailed'), t('invalidEmail'));
-      return;
-    }
-
-    const criteria = {
-      length: password.length >= 8,
-      upperLower: /[A-Z]/.test(password) && /[a-z]/.test(password),
-      number: /[0-9]/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>_\-+=]/.test(password),
-    };
-
-    const isValidPassword = Object.values(criteria).every(Boolean);
-    if (!isValidPassword) {
-      Alert.alert(t('loginFailed'), t('invalidPassword'));
-      return;
-    }
-
     try {
-      const response = await apiCall(`${API_URL}/api/User/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-
-        let errorMessage: string = errorData.message || t('loginFailed');
-
-      if (errorMessage === "Email address not verified. Please check your email and verify your account.") {
-        errorMessage = t('accountNotVerified');
+      const result = await signIn({ email, password });
+      switch (result.status) {
+        case 'invalid-credentials':
+          if (result.reason === 'missingFields') {
+            Alert.alert(t('error'), t('fillAllFields'));
+          } else {
+            Alert.alert(t('loginFailed'), t(result.reason));
+          }
+          return;
+        case 'login-rejected': {
+          let message = result.message || t('loginFailed');
+          if (message === 'Email address not verified. Please check your email and verify your account.') {
+            message = t('accountNotVerified');
+          }
+          Alert.alert(t('loginError'), message);
+          return;
+        }
+        case 'missing-token':
+          Alert.alert(t('error'), t('noToken'));
+          return;
+        case 'not-mobile-user':
+          Alert.alert(t('error'), t('mobileroleLogin'));
+          return;
+        case 'failure':
+          Alert.alert(t('loginError'), result.message || t('genericError'));
+          return;
+        case 'signed-in':
+          loadFavorites();
+          router.replace('./(tabs)/events');
+          return;
       }
-
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-
-      if (!data.token) {
-        Alert.alert(t('error'), t('noToken'));
-        return;
-      }
-
-      // 🔐 Proveri rolu korisnika koristeći dobijeni token
-      const roleResponse = await apiCall(`${API_URL}/api/User/role`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${data.token}`,
-        },
-      });
-
-      if (!roleResponse.ok) {
-        throw new Error('Greška pri proveri role');
-      }
-
-      
-      const roleData = await roleResponse.text(); // Vraca string "MobileUser" itd.
-      
-      
-      if (roleData !== '{"role":"MobileUser"}') {
-        Alert.alert(t('error'), t('mobileroleLogin'));
-        return;
-      }
-      
-
-      await AsyncStorage.setItem('token', data.token);
-      loadFavorites();
-      router.replace('./(tabs)/events');
     } catch (error: any) {
       Alert.alert(t('loginError'), error.message || t('genericError'));
     }
