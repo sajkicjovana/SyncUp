@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { API_URL } from '../../config';
 import { MaterialIcons } from '@expo/vector-icons';
 import { apiCall } from '../../config';
@@ -14,6 +14,8 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  BackHandler,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -163,6 +165,27 @@ export default function EventDetailScreen() {
   const { id, from } = useLocalSearchParams();
   const router = useRouter();
   const { i18n, t } = useTranslation();
+
+  const tabDestination = from === 'favorites' ? '/(tabs)/favorites'
+    : from === 'search' ? '/(tabs)/search'
+    : from === 'events' ? '/(tabs)/events'
+    : null;
+
+  const returnToOriginTab = useCallback(() => {
+    if (!tabDestination) return false;
+    router.dismissTo(tabDestination);
+    return true;
+  }, [router, tabDestination]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android' || !tabDestination) return;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', returnToOriginTab);
+
+      return () => subscription.remove();
+    }, [returnToOriginTab, tabDestination])
+  );
 
 
   const currentId = typeof id === 'string' ? id : '';
@@ -602,9 +625,8 @@ const handleAction = async () => {
     <ScrollView style={styles.container}>
       <TouchableOpacity
   onPress={() => {
-    if (from === 'search') router.replace('/search');
-    else if (from === 'favorites') router.replace('/favorites');
-    else if (from === 'reservationDetails') router.back();
+    if (returnToOriginTab()) return;
+    if (from === 'reservationDetails') router.back();
     else if (from === 'ticketDetails') router.back(); // dodato
     else router.replace('/events');
   }}
