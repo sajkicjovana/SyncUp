@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { apiCall } from '../../config';
+import { loadEvents } from '../../src/di/eventList';
+import type { EventListItem } from '../../src/domain/eventList';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AntDesign } from '@expo/vector-icons';
@@ -18,7 +19,7 @@ import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 
 export default function EventsScreen() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [imageLoading, setImageLoading] = useState<{ [key: number]: boolean }>({});
   const router = useRouter();
@@ -29,26 +30,13 @@ export default function EventsScreen() {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const response = await apiCall(`${API_URL}/api/events`);
-      if (response.ok) {
-        const data = await response.json();
-
-        const now = new Date();
-
-        const filtered = data.filter((event: any) => {
-          // pokupi vrednost parentId bez obzira kako se zove
-          const parentId = event.parentEventId;
-
-          const endDate = new Date(event.endDate);
-
-          // parentId može biti string → pretvorimo ga u broj
-          const parentIdNum = Number(parentId);
-
-          return parentIdNum === 0 && endDate >= now;
-        });
-        setEvents(filtered);
+      const result = await loadEvents();
+      if (result.status === 'loaded') {
+        setEvents(result.events);
+      } else if (result.status === 'request-failed') {
+        console.error("Failed to fetch events:", result.statusCode);
       } else {
-        console.error("Failed to fetch events:", response.status);
+        console.error("Error fetching events:", result.error);
       }
     } catch (err) {
       console.error("Error fetching events:", err);
@@ -88,7 +76,7 @@ export default function EventsScreen() {
     router.replace('/login');
   };
 
-  const renderItem = ({ item }: any) => {
+  const renderItem = ({ item }: { item: EventListItem }) => {
     const isFavorite = favorites.includes(item.id);
 
     return (
