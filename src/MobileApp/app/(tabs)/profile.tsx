@@ -13,7 +13,8 @@ import {
   Pressable,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
+import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +22,7 @@ import { ActivityIndicator } from 'react-native';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const rootNavigation = useNavigation('/');
   const { favorites, clearFavorites, setGuestMode } = useFavorites();
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -171,7 +173,9 @@ useEffect(() => {
               await AsyncStorage.removeItem('token');
               clearFavorites();
               setGuestMode(true);
-              router.replace('/');
+              rootNavigation.dispatch(
+                CommonActions.reset({ index: 0, routes: [{ name: 'index' }] })
+              );
             } catch (err) {
               console.error('Error during logout:', err);
               Alert.alert(t('profile.error'), t('profile.logoutError'));
