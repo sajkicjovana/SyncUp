@@ -25,18 +25,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AntDesign } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
 
-const SEARCH_API_URL = `${BASE_URL}/api/Events/search`;
+import { searchUseCases } from '../../src/di/search';
+import { selectFreeSearchEvents } from '../../src/domain/search';
+import type { SearchEvent as EventType, SearchPrices } from '../../src/domain/search';
 const DETAILS_API_URL = `${BASE_URL}/api/Events/Details`;
-
-interface EventType {
-  id: number;
-  title: string;
-  startDate: string;
-  location: string;
-  minPrice?: number | null;
-  maxPrice?: number | null;
-  imageUrl: string;
-}
 
 interface LocationType {
   label: string;
@@ -86,7 +78,7 @@ const SearchScreen = () => {
 
 
   // Mapa za cene: eventId -> { minPrice, maxPrice }
-  const [eventPrices, setEventPrices] = useState<Record<number, { minPrice: number | null; maxPrice: number | null }>>({});
+  const [eventPrices, setEventPrices] = useState<SearchPrices>({});
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -99,12 +91,8 @@ const SearchScreen = () => {
   };
     const fetchLocations = async () => {
     try {
-      const response = await apiCall(`${BASE_URL}/api/Events`);
-      const data: EventType[] = await response.json();
-
-      const uniqueLocations = Array.from(new Set(data.map(ev => ev.location)))
-        .filter(Boolean) // ukloni null/undefined
-        .map(loc => ({ label: loc!, value: loc! }));
+      const locationValues = await searchUseCases.loadLocations();
+      const uniqueLocations = locationValues.map(loc => ({ label: loc, value: loc }));
 
       setLocations(uniqueLocations);
     } catch (error) {
@@ -132,39 +120,9 @@ const SearchScreen = () => {
 const fetchEvents = useCallback(async () => {
   setLoading(true);
   try {
-    const params = new URLSearchParams();
-    if (searchQuery) params.append('name', searchQuery);
-    if (selectedLocation) params.append('location', selectedLocation);
-    if (startDate) params.append('startDate', startDate.toISOString());
-    if (endDate) params.append('endDate', endDate.toISOString());
-    if (sortBy) {
-      switch (sortBy) {
-        case 'popularity':
-          params.append('sortBy', 'popularity');
-          params.append('sortOrder', 'desc');
-          break;
-        case 'priceAsc':
-          params.append('sortBy', 'price');
-          params.append('sortOrder', 'asc');
-          break;
-        case 'priceDesc':
-          params.append('sortBy', 'price');
-          params.append('sortOrder', 'desc');
-          break;
-        case 'dateAsc':
-          params.append('sortBy', 'startDate');
-          params.append('sortOrder', 'asc');
-          break;
-        case 'dateDesc':
-          params.append('sortBy', 'startDate');
-          params.append('sortOrder', 'desc');
-          break;
-      }
-    }
-    if (selectedCategory) params.append('category', selectedCategory);
-
-    const response = await apiCall(`${SEARCH_API_URL}?${params.toString()}`);
-    let data: EventType[] = await response.json();
+    let data = await searchUseCases.loadSearchEvents({
+      searchQuery, selectedLocation, selectedCategory, startDate, endDate, sortBy,
+    });
 
     // fetchuj cene za svaki event
     await Promise.all(
@@ -180,10 +138,7 @@ const fetchEvents = useCallback(async () => {
 
     // frontend filter za "Free only"
     if (isFree) {
-      data = data.filter((event) => {
-        const price = eventPrices[event.id];
-        return price && (!price.minPrice && !price.maxPrice || price.minPrice === 0 && price.maxPrice === 0);
-      });
+      data = selectFreeSearchEvents(data, eventPrices);
     }
 
     setEvents(data);

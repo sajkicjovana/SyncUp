@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "tsx --test src/domain/auth.test.ts src/application/auth/useCases.test.ts src/domain/eventList.test.ts src/application/eventList/useCases.test.ts src/domain/favorites.test.ts src/application/favorites/useCases.test.ts"
+    "test": "tsx --test src/domain/auth.test.ts src/application/auth/useCases.test.ts src/domain/eventList.test.ts src/application/eventList/useCases.test.ts src/domain/favorites.test.ts src/application/favorites/useCases.test.ts src/domain/search.test.ts src/application/search/useCases.test.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
