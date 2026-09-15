@@ -16,6 +16,12 @@ using Backend;
 using System.Security.Claims;
 
 
+if (args.Contains("--seed-demo", StringComparer.Ordinal))
+{
+    Environment.ExitCode = await Backend.LocalDevelopment.DemoSeeder.RunAsync(args);
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -145,7 +151,6 @@ provider.Mappings[".apk"] = "application/vnd.android.package-archive";
 
 var allowedReferers = new[]
 {
-    "http://softeng.pmf.kg.ac.rs:11061",
     "http://localhost:4200"
 };
 
@@ -157,7 +162,7 @@ app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/images"), branch =>
         var isAllowed = !string.IsNullOrEmpty(referer) &&
                         allowedReferers.Any(origin => referer.StartsWith(origin, StringComparison.OrdinalIgnoreCase));
 
-        if (!isAllowed)
+        if (!app.Environment.IsDevelopment() && !isAllowed)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsync("Forbidden");
