@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../../config';
-import { apiCall } from '../../config';
+import { favoritesUseCases } from '../../src/di/favorites';
+import type { FavoriteEvent } from '../../src/domain/favorites';
 import {
   View,
   Text,
@@ -13,12 +14,11 @@ import {
 import { useRouter } from 'expo-router';
 import { useFavorites } from '../context/FavoriteContext';
 import { AntDesign } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
 export default function FavoritesScreen() {
   const { favorites, toggleFavorite } = useFavorites();
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<FavoriteEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [imageLoading, setImageLoading] = useState<{ [key: number]: boolean }>({});
@@ -28,7 +28,7 @@ export default function FavoritesScreen() {
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       setLoading(true);
-      const token = await AsyncStorage.getItem('token');
+      const token = await favoritesUseCases.readToken();
 
       if (!token) {
         setIsGuest(true);
@@ -39,13 +39,10 @@ export default function FavoritesScreen() {
       setIsGuest(false);
 
       try {
-        const response = await apiCall(`${API_URL}/api/favorites`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await favoritesUseCases.loadFavoriteEvents(token);
 
         if (response.ok) {
-          const data = await response.json();
-          setEvents(data);
+          setEvents(response.events);
         } else {
           console.error('Failed to fetch favorite events:', response.status);
         }
@@ -59,7 +56,7 @@ export default function FavoritesScreen() {
     checkAuthAndFetch();
   }, [favorites]);
 
-  const renderItem = ({ item }: any) => (
+  const renderItem = ({ item }: { item: FavoriteEvent }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() =>

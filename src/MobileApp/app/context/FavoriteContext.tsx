@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../config';
-import { apiCall } from '../../config';
+import { favoritesUseCases } from '../../src/di/favorites';
 type FavoriteContextType = {
   favorites: number[];
   toggleFavorite: (eventId: number) => Promise<void>;
@@ -34,17 +32,9 @@ export const FavoriteProvider = ({ children }: { children: React.ReactNode }) =>
 
   const loadFavorites = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) return;
-
-      const response = await apiCall(`${API_URL}/api/favorites`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const favoriteIds = data.map((event: any) => event.id);
-        setFavorites(favoriteIds);
+      const result = await favoritesUseCases.loadFavoriteIds();
+      if (result.kind === 'loaded') {
+        setFavorites(result.ids);
       }
     } catch (err) {
       console.error('Failed to load favorites:', err);
@@ -53,25 +43,11 @@ export const FavoriteProvider = ({ children }: { children: React.ReactNode }) =>
 
   const toggleFavorite = async (eventId: number) => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) return;
-
-      const isAlreadyFavorite = favorites.includes(eventId);
-      const method = isAlreadyFavorite ? 'DELETE' : 'POST';
-
-      const res = await apiCall(`${API_URL}/api/Favorites`, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(eventId),
-      });
-
-      if (res.ok) {
+      const result = await favoritesUseCases.toggleFavorite(eventId, favorites);
+      if (result.kind === 'changed') {
         await loadFavorites();
-      } else {
-        console.error('Failed to toggle favorite:', await res.text());
+      } else if (result.kind === 'rejected') {
+        console.error('Failed to toggle favorite:', result.text);
       }
     } catch (err) {
       console.error('Error toggling favorite:', err);
