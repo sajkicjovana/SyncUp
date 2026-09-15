@@ -6,7 +6,7 @@ if (!apiUrl) {
 }
 export const API_URL = apiUrl.replace(/\/+$/, '');
 export const apiCall = async (url: string, options: RequestInit = {}) => {
-  const lang = await AsyncStorage.getItem('lang') || 'sr'; // default sr
+  const lang = await AsyncStorage.getItem('language') || 'sr'; // default sr
   return fetch(url, {
     ...options,
     headers: {
