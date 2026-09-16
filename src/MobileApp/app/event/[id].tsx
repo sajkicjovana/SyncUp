@@ -23,7 +23,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { loadEventAgenda } from '../../src/di/eventAgenda';
+import { loadEventDetails } from '../../src/di/eventDetails';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
+import type { EventDetails } from '../../src/domain/eventDetails';
 
 
 const screen = Dimensions.get('window');
@@ -41,23 +43,7 @@ type PinCategory = {
   name: string;
 };
 
-type Event = {
-  id: number;
-  title: string;
-  imageUrl: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  description: string;
-  organizerId: number;
-  organizerName: string;
-  attendingCount: number;
-  isFavorite: boolean;
-  agenda: AgendaItem[];
-  minPrice: number | null;
-  maxPrice: number | null;
-  isFree: boolean;
-};
+type Event = EventDetails & { agenda?: AgendaItem[]; isFree: boolean };
 
 type EventPin = {
   id: number;
@@ -204,16 +190,7 @@ const [agendaData, setAgendaData] = useState<EventAgendaResponse | null>(null);
       setLoading(true);
       const token = await AsyncStorage.getItem('token');
 
-      const headers: any = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const response = await apiCall(`${API_URL}/api/Events/Details?id=${currentId}`, {
-        headers,
-      });
-
-      if (!response.ok) throw new Error(t('failedToLoadEvent'));
-
-      const data: Event = await response.json();
+      const data = await loadEventDetails(currentId, token);
 
       const isFreeCalculated =
         (data.minPrice === null || data.minPrice === 0) &&
