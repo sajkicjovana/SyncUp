@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { loadEventAgenda } from '../../src/di/eventAgenda';
 import { loadEventDetails } from '../../src/di/eventDetails';
 import { eventPinsUseCases } from '../../src/di/eventPins';
+import { geocodeLocation as geocodeEventLocation } from '../../src/di/eventLocation';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
 import type { EventPin, PinCategory } from '../../src/domain/eventPins';
@@ -456,25 +457,8 @@ const handleAction = async () => {
 
   const geocodeLocation = async (location: string) => {
     try {
-      const response = await apiCall(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`,
-        {
-          headers: {
-            'User-Agent': 'SyncUpApp/1.0 (support@syncupapp.com)',
-            'Accept-Language': 'en',
-          },
-        }
-      );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      if (data && data.length > 0) {
-        setCoords({
-          latitude: parseFloat(data[0].lat),
-          longitude: parseFloat(data[0].lon),
-        });
-      }
+      const coordinates = await geocodeEventLocation(location);
+      if (coordinates) setCoords(coordinates);
     } catch (err) {
       console.warn('Error geocoding location:', err);
     }
