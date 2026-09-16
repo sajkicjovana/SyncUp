@@ -127,8 +127,7 @@ const fetchEvents = useCallback(async () => {
     // fetchuj cene za svaki event
     await Promise.all(
       data.map(async (event) => {
-        const resp = await apiCall(`${DETAILS_API_URL}?id=${event.id}`);
-        const details = await resp.json();
+        const details = await searchUseCases.loadEventPrice(event.id);
         setEventPrices((prev) => ({
           ...prev,
           [event.id]: { minPrice: details.minPrice, maxPrice: details.maxPrice },

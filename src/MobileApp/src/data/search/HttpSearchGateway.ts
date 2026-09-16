@@ -12,4 +12,8 @@ export const httpSearchGateway: SearchGateway = {
     const response = await apiCall(`${API_URL}/api/Events`);
     return response.json();
   },
+  async getEventPrice(eventId) {
+    const response = await apiCall(`${API_URL}/api/Events/Details?id=${eventId}`);
+    return response.json();
+  },
 };

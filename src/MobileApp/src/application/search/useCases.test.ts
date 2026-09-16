@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { SearchCriteria, SearchEvent } from '../../domain/search';
+import type { SearchCriteria, SearchEvent, SearchPrice } from '../../domain/search';
 import type { SearchGateway } from './ports';
 import { createSearchUseCases, prepareSearchParameters } from './useCases';
 
@@ -10,6 +10,7 @@ const criteria: SearchCriteria = {
 };
 const event: SearchEvent = { id: 1, title: 'Demo', location: 'City', startDate: '', imageUrl: '' };
 const unused = async (): Promise<SearchEvent[]> => { throw new Error('Unexpected gateway operation'); };
+const unusedPrice = async (): Promise<SearchPrice> => { throw new Error('Unexpected price operation'); };
 
 for (const [sortBy, expected] of [
   ['popularity', [['sortBy', 'popularity'], ['sortOrder', 'desc']]],
@@ -48,7 +49,7 @@ test('whitespace criteria remain present and Free-only is never sent', () => {
 });
 
 test('invalid date still fails during preparation before the gateway is called', () => {
-  const useCases = createSearchUseCases({ search: unused, getLocationEvents: unused });
+  const useCases = createSearchUseCases({ search: unused, getLocationEvents: unused, getEventPrice: unusedPrice });
   assert.throws(() => useCases.loadSearchEvents({ ...criteria, startDate: new Date('invalid') }), RangeError);
 });
 
@@ -62,6 +63,7 @@ test('search calls gateway once with prepared values and preserves returned arra
       return events;
     },
     getLocationEvents: unused,
+    getEventPrice: unusedPrice,
   };
   const result = await createSearchUseCases(gateway).loadSearchEvents(criteria);
   assert.equal(calls, 1);
@@ -69,7 +71,7 @@ test('search calls gateway once with prepared values and preserves returned arra
 });
 
 test('empty search and location results remain empty', async () => {
-  const useCases = createSearchUseCases({ search: async () => [], getLocationEvents: async () => [] });
+  const useCases = createSearchUseCases({ search: async () => [], getLocationEvents: async () => [], getEventPrice: unusedPrice });
   assert.deepEqual(await useCases.loadSearchEvents(criteria), []);
   assert.deepEqual(await useCases.loadLocations(), []);
 });
@@ -78,7 +80,7 @@ for (const operation of ['search', 'locations'] as const) {
   for (const error of [new Error('Network failure'), new SyntaxError('JSON failure')]) {
     test(`${operation} preserves original ${error.message}`, async () => {
       const fail = async () => { throw error; };
-      const useCases = createSearchUseCases({ search: fail, getLocationEvents: fail });
+      const useCases = createSearchUseCases({ search: fail, getLocationEvents: fail, getEventPrice: fail });
       await assert.rejects(operation === 'search' ? useCases.loadSearchEvents(criteria) : useCases.loadLocations(),
         actual => actual === error);
     });
@@ -90,7 +92,51 @@ test('location loading calls its gateway once and only projects unique truthy lo
   const useCases = createSearchUseCases({ search: unused, getLocationEvents: async () => {
     calls++;
     return ['B', 'A', 'B', '', 'a', ' '].map(location => ({ ...event, location, parentEventId: 5, endDate: '2000-01-01' }));
-  } });
+  }, getEventPrice: unusedPrice });
   assert.deepEqual(await useCases.loadLocations(), ['B', 'A', 'a', ' ']);
   assert.equal(calls, 1);
+});
+
+test('price loading delegates exactly once and preserves the event ID and returned value', async () => {
+  const price = { minPrice: 0, maxPrice: undefined };
+  let calls = 0;
+  let receivedId = 0;
+  const useCases = createSearchUseCases({
+    search: unused,
+    getLocationEvents: unused,
+    async getEventPrice(eventId) {
+      calls++;
+      receivedId = eventId;
+      return price;
+    },
+  });
+
+  const result = await useCases.loadEventPrice(42);
+
+  assert.equal(calls, 1);
+  assert.equal(receivedId, 42);
+  assert.equal(result, price);
+  assert.deepEqual(result, { minPrice: 0, maxPrice: undefined });
+});
+
+test('price loading preserves empty and falsy price fields', async () => {
+  const price = { minPrice: null, maxPrice: 0 };
+  const useCases = createSearchUseCases({
+    search: unused,
+    getLocationEvents: unused,
+    getEventPrice: async () => price,
+  });
+
+  assert.equal(await useCases.loadEventPrice(7), price);
+});
+
+test('price loading propagates gateway rejection unchanged', async () => {
+  const error = new Error('Price request failed');
+  const useCases = createSearchUseCases({
+    search: unused,
+    getLocationEvents: unused,
+    getEventPrice: async () => { throw error; },
+  });
+
+  await assert.rejects(useCases.loadEventPrice(9), (caught) => caught === error);
 });

@@ -34,5 +34,6 @@ export function createSearchUseCases(gateway: SearchGateway) {
   return {
     loadSearchEvents: (criteria: SearchCriteria) => gateway.search(prepareSearchParameters(criteria)),
     loadLocations: async () => uniqueSearchLocations(await gateway.getLocationEvents()),
+    loadEventPrice: (eventId: number) => gateway.getEventPrice(eventId),
   };
 }
