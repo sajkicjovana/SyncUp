@@ -300,6 +300,10 @@ useEffect(() => {
   const fetchResources = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        setHasResources(false);
+        return;
+      }
       const headers: any = {};
       if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -360,6 +364,10 @@ useEffect(() => {
   const fetchResources = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        setHasResources(false);
+        return;
+      }
 
       const headers: any = {};
       if (token) headers.Authorization = `Bearer ${token}`;
