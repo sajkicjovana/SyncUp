@@ -24,8 +24,10 @@ import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { loadEventAgenda } from '../../src/di/eventAgenda';
 import { loadEventDetails } from '../../src/di/eventDetails';
+import { eventPinsUseCases } from '../../src/di/eventPins';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
+import type { EventPin, PinCategory } from '../../src/domain/eventPins';
 
 
 const screen = Dimensions.get('window');
@@ -38,23 +40,7 @@ type AgendaItem = {
   endTime: string;
 };
 
-type PinCategory = {
-  id: number;
-  name: string;
-};
-
 type Event = EventDetails & { agenda?: AgendaItem[]; isFree: boolean };
-
-type EventPin = {
-  id: number;
-  eventId: number;
-  latitude: number;
-  longitude: number;
-  label: string;
-  description: string;
-  pinnedAt: string;
-  pinCategory: number;
-};
 function buildLeafletHtml(payload: {
   center: { latitude: number; longitude: number };
   pins: { lat: number; lng: number; title: string; desc: string; iconUrl?: string; emoji?: string }[];
@@ -203,9 +189,7 @@ const [agendaData, setAgendaData] = useState<EventAgendaResponse | null>(null);
 
       const fetchCategories = async () => {
         try {
-          const response = await apiCall(`${API_URL}/api/EventPin/categories`);
-          if (!response.ok) throw new Error('Failed to load categories');
-          const data: PinCategory[] = await response.json();
+          const data = await eventPinsUseCases.loadPinCategories();
           setPinCategories(data);
         } catch (err) {
           console.error('Greška pri učitavanju kategorija:', err);
@@ -448,24 +432,7 @@ const handleAction = async () => {
     // Za guest ne zahtevamo token
     const token = await AsyncStorage.getItem('token');
 
-    const headers: any = {
-      'Content-Type': 'application/json',
-    };
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    // Ispravan endpoint
-    const response = await apiCall(`${API_URL}/api/EventPin/event/?eventId=${eventId}`, {
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn('Ne mogu da učitam pinove:', errorText);
-      setEventPins([]); // fallback
-      return;
-    }
-
-    const data: EventPin[] = await response.json();
+    const data = await eventPinsUseCases.loadEventPins(eventId, token);
 
     // Spoj sa kategorijama za ikonice
     const pinsWithCategory = data.map((pin) => {
