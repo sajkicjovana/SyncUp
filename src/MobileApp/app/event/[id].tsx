@@ -26,6 +26,7 @@ import { loadEventAgenda } from '../../src/di/eventAgenda';
 import { loadEventDetails } from '../../src/di/eventDetails';
 import { eventPinsUseCases } from '../../src/di/eventPins';
 import { geocodeLocation as geocodeEventLocation } from '../../src/di/eventLocation';
+import { loadEventResources } from '../../src/di/eventResources';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
 import type { EventPin, PinCategory } from '../../src/domain/eventPins';
@@ -242,13 +243,7 @@ useEffect(() => {
         setHasResources(false);
         return;
       }
-      const headers: any = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const response = await apiCall(`${API_URL}/api/Resource/${event.id}/resources`, { headers });
-      if (!response.ok) throw new Error('Failed to load resources');
-
-      const data = await response.json();
+      const data = await loadEventResources(event.id.toString(), token);
       setHasResources(data.length > 0);
     } catch (err) {
       console.error(err);
@@ -300,13 +295,7 @@ useEffect(() => {
         return;
       }
 
-      const headers: any = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const response = await apiCall(`${API_URL}/api/Resource/${currentId}/resources`, { headers });
-      if (!response.ok) throw new Error('Failed to load resources');
-
-      const data = await response.json();
+      const data = await loadEventResources(currentId, token);
       setHasResources(data.length > 0);
     } catch (err) {
       console.error(err);
