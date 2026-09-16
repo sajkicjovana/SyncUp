@@ -22,36 +22,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
+import { loadEventAgenda } from '../../src/di/eventAgenda';
+import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 
 
 const screen = Dimensions.get('window');
 
-
-type EventDto = {
-  eventId: number;
-  title: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  imageUrl: string;
-  parentEventId: number;
-  description: string;
-};
-
-type ActivityDto = {
-  activityId: number;
-  eventId: number;
-  title: string;
-  startDate: string;
-  endDate: string;
-  description: string;
-  category: string; // ili kako backend šalje
-};
-
-type EventsSubeventsActivitiesDto = {
-  eventsAndSubevents: EventDto[];
-  activities: ActivityDto[];
-};
 
 type AgendaItem = {
   title: string;
@@ -220,7 +196,7 @@ export default function EventDetailScreen() {
 
 
   
-const [agendaData, setAgendaData] = useState<EventsSubeventsActivitiesDto | null>(null);
+const [agendaData, setAgendaData] = useState<EventAgendaResponse | null>(null);
   
  useEffect(() => {
   const fetchEvent = async () => {
@@ -337,14 +313,7 @@ useEffect(() => {
     try {
       const token = await AsyncStorage.getItem('token');
 
-      const headers: any = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const response = await apiCall(`${API_URL}/api/events/subevents-activities/${currentId}`, { headers });
-      if (!response.ok) throw new Error(t('failedToLoadAgenda'));
-
-
-      const data: EventsSubeventsActivitiesDto = await response.json();
+      const data = await loadEventAgenda(currentId, token);
       setAgendaData(data);
     } catch (err) {
       console.error(err);
