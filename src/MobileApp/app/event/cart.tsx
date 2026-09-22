@@ -11,10 +11,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../config';
-import { apiCall } from '../../config';
 import { Ionicons } from '@expo/vector-icons';
-import { loadCartDisplayData, reserveResourcesWithoutTicket } from '../../src/di/cart';
+import { loadCartDisplayData, purchaseStandardCart, reserveResourcesWithoutTicket } from '../../src/di/cart';
+import { CartStandardPurchaseError } from '../../src/application/cart/useCases';
 import type { CartTicketDisplayItem, CartResourceDisplayItem } from '../../src/application/cart/ports';
 
 export default function CartScreen() {
@@ -116,53 +115,15 @@ export default function CartScreen() {
             try {
               if (!token) { Alert.alert(t('cart.errorTitle'), t('cart.loginRequired')); setLoading(false); return; }
 
-              // Uzmi postojeće karte pre kupovine
-              const myTicketsBeforeRes = await apiCall(`${API_URL}/api/Ticket/tickets/my`, { headers: { Authorization: `Bearer ${token}` } });
-              if (!myTicketsBeforeRes.ok) throw new Error(t('cart.fetchMyTicketsFailed'));
-              const myTicketsBeforePurchase = await myTicketsBeforeRes.json();
-              const existingTicketIDs = new Set(myTicketsBeforePurchase.map((t: any) => t.userTicketID));
+              const newlyPurchasedTickets = await purchaseStandardCart({
+                eventId: Number(eventId),
+                selectedTickets,
+                selectedResourceIds: selectedResources,
+                token,
+              });
 
-              // Kupovina karata
-              if (selectedTickets.length > 0) {
-                const ticketRequestBody = selectedTickets.map(ticket => ({
-                  TicketID: ticket.id,
-                  Quantity: ticket.quantity,
-                }));
-                const purchaseRes = await apiCall(`${API_URL}/api/Ticket/purchase`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                  body: JSON.stringify(ticketRequestBody),
-                });
-                if (!purchaseRes.ok) {
-                  const errorText = await purchaseRes.text();
-                  throw new Error(t('cart.purchaseFailed', { error: errorText }));
-                }
-              }
-
-              // Uzmi nove kupljene karte
-              const myTicketsAfterRes = await apiCall(`${API_URL}/api/Ticket/tickets/my`, { headers: { Authorization: `Bearer ${token}` } });
-              if (!myTicketsAfterRes.ok) throw new Error(t('cart.fetchAfterPurchaseFailed'));
-              const allMyTicketsAfterPurchase = await myTicketsAfterRes.json();
-
-              const newlyPurchasedTickets = allMyTicketsAfterPurchase.filter((t: any) =>
-                t.eventID === Number(eventId) && !existingTicketIDs.has(t.userTicketID)
-              );
-
-              // Rezervacija resursa uz nove karte
-              for (const resId of selectedResources) {
-                await apiCall(`${API_URL}/api/Resource/reserve`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({
-                    EventResourceID: resId,
-                    Quantity: 1,
-                    UserTicketID: newlyPurchasedTickets.length > 0 ? newlyPurchasedTickets[0].userTicketID : null
-                  }),
-                });
-              }
-
-              const ticketIDs = newlyPurchasedTickets.map((t: any) => t.userTicketID);
-              const validationTokens = newlyPurchasedTickets.map((t: any) => t.validationToken);
+              const ticketIDs = newlyPurchasedTickets.map(ticket => ticket.userTicketId);
+              const validationTokens = newlyPurchasedTickets.map(ticket => ticket.validationToken);
               const ticketTypes = selectedTickets.map(t => {
                 const info = getTicketInfo(t.id);
                 return { id: t.id, name: info?.name || '', quantity: t.quantity };
@@ -196,7 +157,14 @@ export default function CartScreen() {
               );
             } catch (error: any) {
               setLoading(false);
-              Alert.alert(t('cart.errorTitle'), error.message || t('cart.genericError'));
+              const errorMessage = error instanceof CartStandardPurchaseError
+                ? error.stage === 'beforeTickets'
+                  ? t('cart.fetchMyTicketsFailed')
+                  : error.stage === 'purchase'
+                    ? t('cart.purchaseFailed', { error: error.responseText })
+                    : t('cart.fetchAfterPurchaseFailed')
+                : error.message || t('cart.genericError');
+              Alert.alert(t('cart.errorTitle'), errorMessage || t('cart.genericError'));
             }
           },
         },
