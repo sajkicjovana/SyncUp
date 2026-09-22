@@ -1,31 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { API_URL } from '../../config';
 import { useTranslation } from 'react-i18next';
-import { apiCall } from '../../config';
 import { Ionicons } from '@expo/vector-icons';
-
-type Ticket = {
-  UserTicketID: number;
-  ticketType: string;
-};
-
-type ResourceReservation = {
-  ReservationID: number;
-  ResourceName: string;
-  ResourceCategory: string;  // dodato
-  ResourceDescription: string; // dodato
-  Quantity: number;
-  ReservedAt: string;
-  UserTicketID: number | null;
-  EventTitle: string;
-  EventID: number;
-  EventDate: string;      // dodato
-  EventEndDate: string;   // dodato
-  UserTickets: Ticket[];
-};
+import { loadReservationDetails } from '../../src/di/reservations';
+import type { ReservationDetailsResource } from '../../src/application/reservations/ports';
 
 
 export default function ReservationDetails() {
@@ -35,67 +14,30 @@ export default function ReservationDetails() {
   const eventID = Array.isArray(params.eventID) ? params.eventID[0] : params.eventID;
   const [loading, setLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState('');
-  const [reservations, setReservations] = useState<ResourceReservation[]>([]);
+  const [reservations, setReservations] = useState<ReservationDetailsResource[]>([]);
 
 useEffect(() => {
   const fetchDetails = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
+      const result = await loadReservationDetails(eventID);
+      if (result.status === 'missing-token') {
         setLoading(false);
         return;
       }
 
-      const res = await apiCall(`${API_URL}/api/Resource/my-reservations`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
+      if (result.status === 'non-ok') {
         console.error('Failed to fetch reservations');
         setLoading(false);
         return;
       }
 
-      const data = await res.json();
-      const eventReservations = data.filter((r: any) => r.eventID == eventID);
-
-      if (eventReservations.length === 0) {
+      if (!result.details) {
         setLoading(false);
         return;
       }
 
-      setEventTitle(eventReservations[0].eventTitle);
-
-      // Grupisanje resursa po ResourceName
-      const groupedResources: Record<string, ResourceReservation> = {};
-      eventReservations.forEach((r: any) => {
-        const key = r.resourceName;
-        if (!groupedResources[key]) {
-          groupedResources[key] = {
-            ReservationID: r.reservationID,
-            ResourceName: r.resourceName,
-            ResourceCategory: r.resourceCategory,
-            ResourceDescription: r.resourceDescription,
-            Quantity: r.quantity,
-            ReservedAt: r.reservedAt,
-            UserTicketID: r.userTicketID,
-            EventTitle: r.eventTitle,
-            EventID: r.eventID,
-            EventDate: r.eventDate,
-            EventEndDate: r.eventEndDate,
-            UserTickets: r.userTickets ?? [],
-          };
-        } else {
-          // Saberi količinu
-          groupedResources[key].Quantity += r.quantity;
-          // Poslednji datum rezervacije
-          if (new Date(r.reservedAt) > new Date(groupedResources[key].ReservedAt)) {
-            groupedResources[key].ReservedAt = r.reservedAt;
-          }
-        }
-      });
-
-      setReservations(Object.values(groupedResources));
+      setEventTitle(result.details.EventTitle);
+      setReservations(result.details.Resources);
     } catch (err) {
       console.error(err);
     } finally {
