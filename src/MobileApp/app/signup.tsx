@@ -202,7 +202,7 @@ export default function SignUpScreen() {
       <View style={{ alignItems: 'center' }}>
         <Text style={styles.loginLink}>
           {t('alreadyHaveAccount')}{' '}
-          <Link href="/login" asChild>
+          <Link href="/login" replace asChild>
             <TouchableOpacity>
               <Text style={styles.link}>{t('login')}</Text>
             </TouchableOpacity>
