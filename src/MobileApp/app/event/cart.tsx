@@ -14,9 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config';
 import { apiCall } from '../../config';
 import { Ionicons } from '@expo/vector-icons';
-
-type Ticket = { id: number; name: string; price: number; };
-type Resource = { id: number; name: string; price?: number; };
+import { loadCartDisplayData } from '../../src/di/cart';
+import type { CartTicketDisplayItem, CartResourceDisplayItem } from '../../src/application/cart/ports';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -25,8 +24,8 @@ export default function CartScreen() {
 
   const [selectedTickets, setSelectedTickets] = useState<{ id: number; quantity: number }[]>([]);
   const [selectedResources, setSelectedResources] = useState<number[]>([]);
-  const [ticketData, setTicketData] = useState<Ticket[]>([]);
-  const [resourceData, setResourceData] = useState<Resource[]>([]);
+  const [ticketData, setTicketData] = useState<CartTicketDisplayItem[]>([]);
+  const [resourceData, setResourceData] = useState<CartResourceDisplayItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
@@ -50,16 +49,10 @@ export default function CartScreen() {
 
     const fetchTicketsAndResources = async () => {
       try {
-        const ticketRes = await apiCall(`${API_URL}/api/Ticket/events/${eventId}/tickets`);
-        const ticketsJson = ticketRes.ok ? await ticketRes.json() : [];
+        const { tickets: loadedTickets, resources: loadedResources } = await loadCartDisplayData(eventId, token);
 
-        const resourceRes = await apiCall(`${API_URL}/api/Resource/${eventId}/resources`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const resourcesJson = resourceRes.ok ? await resourceRes.json() : [];
-
-        setTicketData(ticketsJson.map((t: any) => ({ id: t.ticketID, name: t.typeName, price: t.price })));
-        setResourceData(resourcesJson.map((r: any) => ({ id: r.id, name: r.name, price: r.price })));
+        setTicketData(loadedTickets);
+        setResourceData(loadedResources);
       } catch {
         Alert.alert(t('cart.errorTitle'), t('cart.fetchError'));
       }
