@@ -106,6 +106,32 @@ for (const [ids, intent] of [[[], 'add'], [[3], 'remove']] as const) {
   });
 }
 
+for (const intent of ['add', 'remove'] as const) {
+  test(`token-supplied ${intent} mutation uses the supplied token without reading storage`, async () => {
+    const { useCases, calls } = setup();
+
+    assert.deepEqual(await useCases.mutateFavoriteWithToken(3, intent, 'screen-token'), { ok: true });
+    assert.deepEqual(calls, [['change', 'screen-token', 3, intent]]);
+  });
+}
+
+test('token-supplied mutation preserves backend rejection without reading storage', async () => {
+  const { gateway, useCases, calls } = setup();
+  gateway.changeFavorite = async () => ({ ok: false, text: 'Server rejection' });
+
+  assert.deepEqual(await useCases.mutateFavoriteWithToken(3, 'add', 'screen-token'), { ok: false, text: 'Server rejection' });
+  assert.deepEqual(calls, []);
+});
+
+test('token-supplied mutation preserves thrown errors without reading storage', async () => {
+  const { gateway, useCases, calls } = setup();
+  const error = new Error('Network failed');
+  gateway.changeFavorite = async () => { throw error; };
+
+  await assert.rejects(useCases.mutateFavoriteWithToken(3, 'remove', 'screen-token'), (caught) => caught === error);
+  assert.deepEqual(calls, []);
+});
+
 test('rejected mutation preserves response text and does not refresh', async () => {
   const { gateway, useCases, calls } = setup();
   gateway.changeFavorite = async () => ({ ok: false, text: 'Server rejection' });

@@ -27,6 +27,7 @@ import { loadEventDetails } from '../../src/di/eventDetails';
 import { eventPinsUseCases } from '../../src/di/eventPins';
 import { geocodeLocation as geocodeEventLocation } from '../../src/di/eventLocation';
 import { loadEventResources } from '../../src/di/eventResources';
+import { favoritesUseCases } from '../../src/di/favorites';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
 import type { EventPin, PinCategory } from '../../src/domain/eventPins';
@@ -473,22 +474,17 @@ const handleAction = async () => {
         return;
       }
 
-      const method = event.isFavorite ? 'DELETE' : 'POST';
-
-      const res = await apiCall(`${API_URL}/api/Favorites`, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(event.id),
-      });
+      const res = await favoritesUseCases.mutateFavoriteWithToken(
+        event.id,
+        event.isFavorite ? 'remove' : 'add',
+        token,
+      );
 
       if (res.ok) {
         setEvent((prev) => (prev ? { ...prev, isFavorite: !prev.isFavorite } : prev));
         await loadFavorites();
       } else {
-        const errorText = await res.text();
+        const errorText = res.text;
         Alert.alert(t('error'), `${t('failedToUpdateFavorite')}: ${errorText}`);
       }
     } catch (err) {
