@@ -76,7 +76,6 @@ useEffect(() => {
       </TouchableOpacity>
     <View style={{ alignItems: 'center', marginBottom: 15 }}>
 <TouchableOpacity
-  disabled={userTickets.length === 0}
   onPress={() =>
     router.push({
       pathname: '/event/[id]',
@@ -84,7 +83,7 @@ useEffect(() => {
     })
   }
 >
-  <Text style={[styles.eventTitle, userTickets.length === 0 && { color: '#95a5a6' }]}>
+  <Text style={styles.eventTitle}>
     {eventTitle}
   </Text>
 </TouchableOpacity>
