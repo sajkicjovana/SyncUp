@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import i18n from '../i18n';
-import { apiCall } from '../../config';
-import { API_URL } from '../../config';
 import {
   View,
   Text,
@@ -19,6 +17,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native';
+import type { ProfileDashboardUpdate } from '../../src/application/profile/ports';
+import { ProfileDashboardTokenReadError } from '../../src/application/profile/useCases';
+import { loadProfileDashboard } from '../../src/di/profile';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -43,100 +44,45 @@ export default function ProfileScreen() {
   const [selectedLang, setSelectedLang] = useState<'en' | 'sr'>('en');
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
-  const normalizeImageUrl = (path: string | null) => {
-    if (!path) return null;
-    if (path.startsWith('http')) return path;
-    if (!path.startsWith('/')) path = `/${path}`;
-    return `${API_URL}${path}`;
-  };
-
-
 useEffect(() => {
     const fetchUserDataAndStats = async () => {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        setIsLoggedIn(false);
-        return;
-      }
-
-      setIsLoggedIn(true);
-      setIsLoading(true);
-
       try {
-        // Fetch profile data
-        const resProfile = await apiCall(`${API_URL}/api/MobileUser/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (resProfile.ok) {
-          const data = await resProfile.json();
-          setFirstName(data.firstName || '');
-          setLastName(data.lastName || '');
-          setEmail(data.email || '');
-          const imageUrl = normalizeImageUrl(data.profilePicture || null);
-          setProfilePicture(imageUrl);
-        } else {
-          console.error('Failed to fetch profile data:', resProfile.status);
-        }
-
-        // Fetch tickets count
-        const resTickets = await apiCall(`${API_URL}/api/ticket/tickets/my`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (resTickets.ok) {
-          const data = await resTickets.json();
-          setTicketsCount(data.length);
-        } else {
-          console.error('Failed to fetch tickets:', resTickets.status);
-        }
-
-        // Fetch resources count
-        const resResources = await apiCall(`${API_URL}/api/Resource/my-reservations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
- if (resResources.ok) {
-  const data = await resResources.json();
-
-  const uniqueReservations = new Set<string>();
-
-  data.forEach((res: any) => {
-    if (res.eventID && res.eventResourceID) {
-      uniqueReservations.add(`${res.eventID}-${res.eventResourceID}`);
-    }
-  });
-
-  // console.log('Grouped reservations:', data);
-  // console.log('Unique reservations count:', uniqueReservations.size);
-
-  setResourcesCount(uniqueReservations.size);
-} else {
-  console.error('Failed to fetch resources:', resResources.status);
-}
-
-        // Fetch credits
-        const resCredits = await apiCall(`${API_URL}/api/Credit`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (resCredits.ok) {
-          const data = await resCredits.json();
-          
-          if (data && typeof data.credits === 'number') {
-            setCredits(data.credits);
+        const result = await loadProfileDashboard((update: ProfileDashboardUpdate) => {
+          if (update.stage === 'authenticated') {
+            setIsLoggedIn(true);
+            setIsLoading(true);
+          } else if (update.stage === 'profile') {
+            if (update.outcome === 'loaded') {
+              setFirstName(update.profile.firstName);
+              setLastName(update.profile.lastName);
+              setEmail(update.profile.email);
+              setProfilePicture(update.profile.profilePicture);
+            } else {
+              console.error('Failed to fetch profile data:', update.status);
+            }
+          } else if (update.stage === 'tickets') {
+            if (update.outcome === 'loaded') setTicketsCount(update.count);
+            else console.error('Failed to fetch tickets:', undefined);
+          } else if (update.stage === 'reservations') {
+            if (update.outcome === 'loaded') setResourcesCount(update.count);
+            else console.error('Failed to fetch resources:', undefined);
+          } else if (update.outcome === 'loaded') {
+            setCredits(update.credits);
+          } else if (update.outcome === 'invalid') {
+            console.warn('Credits field is missing or not a number:', update.invalidValue);
+            setCredits(0);
           } else {
-            console.warn('Credits field is missing or not a number:', data);
+            console.error('Failed to fetch credits. Status:', update.status);
+            console.error('Response text:', update.responseText);
             setCredits(0);
           }
-        } else {
-          console.error('Failed to fetch credits. Status:', resCredits.status);
-          const errorText = await resCredits.text();
-          console.error('Response text:', errorText);
-          setCredits(0);
-        }
+        });
 
+        if (result.status === 'missing-token') {
+          setIsLoggedIn(false);
+        }
       } catch (err) {
+        if (err instanceof ProfileDashboardTokenReadError) throw err.originalError;
         console.error('An unexpected error occurred during API calls:', err);
         // U slučaju bilo kakve greške, postavi kredite na 0 i prikaži grešku
         setCredits(0); 
