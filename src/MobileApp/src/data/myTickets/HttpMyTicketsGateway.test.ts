@@ -21,11 +21,15 @@ test('uses exact lowercase GET endpoint and maps every required field without re
     },
     {
       purchasedAt: 'second-date', ticketType: 'VIP', eventName: 'Event A', price: null,
-      eventID: '5', userTicketID: '7', validationToken: null,
+      eventID: '5', ticketID: '100', userTicketID: '7', validationToken: null,
     },
     {
       purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0,
-      eventID: 0, userTicketID: 7, validationToken: '',
+      eventID: 0, ticketID: null, userTicketID: 7, validationToken: '',
+    },
+    {
+      purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0,
+      eventID: 0, ticketID: 100, userTicketID: 7, validationToken: '',
     },
     {},
   ];
@@ -37,10 +41,11 @@ test('uses exact lowercase GET endpoint and maps every required field without re
   assert.deepEqual(await httpMyTicketsGateway.loadMyTickets('held-token'), {
     ok: true,
     tickets: [
-      { purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0, eventId: 0, userTicketId: 7, validationToken: '' },
-      { purchasedAt: 'second-date', ticketType: 'VIP', eventName: 'Event A', price: null, eventId: '5', userTicketId: '7', validationToken: null },
-      { purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0, eventId: 0, userTicketId: 7, validationToken: '' },
-      { purchasedAt: undefined, ticketType: undefined, eventName: undefined, price: undefined, eventId: undefined, userTicketId: undefined, validationToken: undefined },
+      { purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0, eventId: 0, ticketDefinitionId: 100, userTicketId: 7, validationToken: '' },
+      { purchasedAt: 'second-date', ticketType: 'VIP', eventName: 'Event A', price: null, eventId: '5', ticketDefinitionId: '100', userTicketId: '7', validationToken: null },
+      { purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0, eventId: 0, ticketDefinitionId: null, userTicketId: 7, validationToken: '' },
+      { purchasedAt: 'first-date', ticketType: 'VIP', eventName: 'Event A', price: 0, eventId: 0, ticketDefinitionId: 100, userTicketId: 7, validationToken: '' },
+      { purchasedAt: undefined, ticketType: undefined, eventName: undefined, price: undefined, eventId: undefined, ticketDefinitionId: undefined, userTicketId: undefined, validationToken: undefined },
     ],
   });
   assert.deepEqual(calls, [{

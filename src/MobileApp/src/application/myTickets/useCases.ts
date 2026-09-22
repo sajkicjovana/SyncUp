@@ -17,12 +17,25 @@ export class MyTicketsTokenReadError extends Error {
 }
 
 function groupTickets(tickets: MyTicketRow[]): GroupedMyTicket[] {
-  const grouped: Record<string, Omit<GroupedMyTicket, 'validationTokens'>> = {};
+  type GroupWithoutTokens = Omit<GroupedMyTicket, 'validationTokens'>;
+  const stableGroups = new Map<number | string, GroupWithoutTokens>();
+  const fallbackGroups = new Map<string, GroupWithoutTokens>();
+  const groupedTickets: GroupWithoutTokens[] = [];
 
   tickets.forEach((ticket) => {
-    const key = `${ticket.eventName}_${ticket.ticketType}`;
-    if (!grouped[key]) {
-      grouped[key] = {
+    const ticketDefinitionId = ticket.ticketDefinitionId;
+    let fallbackKey: string | undefined;
+    let existingGroup: GroupWithoutTokens | undefined;
+
+    if (ticketDefinitionId == null) {
+      fallbackKey = `${ticket.eventName}_${ticket.ticketType}`;
+      existingGroup = fallbackGroups.get(fallbackKey);
+    } else {
+      existingGroup = stableGroups.get(ticketDefinitionId);
+    }
+
+    if (!existingGroup) {
+      const newGroup = {
         ticketType: ticket.ticketType,
         eventName: ticket.eventName,
         price: ticket.price,
@@ -31,14 +44,20 @@ function groupTickets(tickets: MyTicketRow[]): GroupedMyTicket[] {
         purchasedAt: [ticket.purchasedAt],
         ticketIds: [ticket.userTicketId],
       };
+
+      if (ticketDefinitionId == null) {
+        fallbackGroups.set(fallbackKey!, newGroup);
+      } else {
+        stableGroups.set(ticketDefinitionId, newGroup);
+      }
+      groupedTickets.push(newGroup);
     } else {
-      grouped[key].quantity += 1;
-      grouped[key].ticketIds.push(ticket.userTicketId);
-      grouped[key].purchasedAt.push(ticket.purchasedAt);
+      existingGroup.quantity += 1;
+      existingGroup.ticketIds.push(ticket.userTicketId);
+      existingGroup.purchasedAt.push(ticket.purchasedAt);
     }
   });
 
-  const groupedTickets = Object.values(grouped);
   groupedTickets.sort(
     (a, b) => new Date(b.purchasedAt[b.purchasedAt.length - 1]).getTime()
       - new Date(a.purchasedAt[a.purchasedAt.length - 1]).getTime()

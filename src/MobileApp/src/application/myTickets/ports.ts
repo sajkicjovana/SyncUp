@@ -4,6 +4,7 @@ export type MyTicketRow = {
   eventName: string;
   price: number;
   eventId: number | null | undefined;
+  ticketDefinitionId: number | string | null | undefined;
   userTicketId: number | string | undefined;
   validationToken: string | undefined;
 };

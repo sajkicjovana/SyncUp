@@ -18,6 +18,7 @@ export const httpMyTicketsGateway: MyTicketsGateway = {
         eventName: ticket.eventName,
         price: ticket.price,
         eventId: ticket.eventID,
+        ticketDefinitionId: ticket.ticketID,
         userTicketId: ticket.userTicketID,
         validationToken: ticket.validationToken,
       })),
