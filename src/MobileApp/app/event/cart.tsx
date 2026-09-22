@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config';
 import { apiCall } from '../../config';
 import { Ionicons } from '@expo/vector-icons';
-import { loadCartDisplayData } from '../../src/di/cart';
+import { loadCartDisplayData, reserveResourcesWithoutTicket } from '../../src/di/cart';
 import type { CartTicketDisplayItem, CartResourceDisplayItem } from '../../src/application/cart/ports';
 
 export default function CartScreen() {
@@ -88,13 +88,7 @@ export default function CartScreen() {
               try {
                 if (!token) { Alert.alert(t('cart.errorTitle'), t('cart.loginRequired')); setLoading(false); return; }
 
-                for (const resId of selectedResources) {
-                  await apiCall(`${API_URL}/api/Resource/reserve`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ EventResourceID: resId, Quantity: 1, UserTicketID: null }),
-                  });
-                }
+                await reserveResourcesWithoutTicket(selectedResources, token);
 
                 setLoading(false);
                 Alert.alert(
