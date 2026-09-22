@@ -28,6 +28,10 @@ export function createSignIn(gateway: AuthGateway, store: SessionStore) {
     }
   };
 }
+export function createRequestPasswordRecovery(gateway: AuthGateway) {
+  return (email: string) => gateway.requestPasswordReset(email);
+}
+
 
 export type RestoreSessionResult =
   | { status: 'authenticated'; token: string }

@@ -25,4 +25,16 @@ export const httpAuthGateway: AuthGateway = {
     // Deliberately preserve the exact response-text comparison from the baseline.
     return (await response.text()) === '{"role":"MobileUser"}';
   },
+  async requestPasswordReset(email) {
+    const response = await apiCall(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const data: any = await response.json();
+      return { ok: false, message: data.message ? String(data.message) : undefined };
+    }
+    return { ok: true };
+  },
 };

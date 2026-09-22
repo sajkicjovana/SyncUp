@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Credentials } from '../../domain/auth';
 import type { AuthGateway, LoginResult, SessionStore } from './ports';
-import { createRestoreSession, createSignIn } from './useCases';
+import { createRequestPasswordRecovery, createRestoreSession, createSignIn } from './useCases';
 
 const credentials: Credentials = { email: 'demo@example.test', password: 'Abcdef1!' };
 
@@ -34,6 +34,10 @@ function setup(initialToken: string | null = null) {
       assert.equal(value, 'issued-token');
       assert.equal(token, initialToken, 'eligibility must run before session persistence');
       return true;
+    },
+    async requestPasswordReset(email) {
+      calls.push(`recovery:${email}`);
+      return { ok: true };
     },
   };
   return { calls, store, gateway, currentToken: () => token };
@@ -179,4 +183,30 @@ test('cleanup failure is retried and remains observable if it fails again', asyn
   };
   await assert.rejects(createRestoreSession(fake.store, () => 99, () => 100), /Remove failed/);
   assert.deepEqual(fake.calls, ['read', 'remove', 'remove']);
+});
+
+test('password recovery forwards the exact email and preserves success', async () => {
+  const fake = setup();
+  const recover = createRequestPasswordRecovery(fake.gateway);
+  assert.deepEqual(await recover(' person@example.test '), { ok: true });
+  assert.deepEqual(fake.calls, ['recovery: person@example.test ']);
+});
+
+test('password recovery preserves a backend rejection message', async () => {
+  const fake = setup();
+  fake.gateway.requestPasswordReset = async () => ({ ok: false, message: 'Rejected' });
+  assert.deepEqual(await createRequestPasswordRecovery(fake.gateway)('person@example.test'), { ok: false, message: 'Rejected' });
+});
+
+test('password recovery preserves a backend rejection without a message', async () => {
+  const fake = setup();
+  fake.gateway.requestPasswordReset = async () => ({ ok: false });
+  assert.deepEqual(await createRequestPasswordRecovery(fake.gateway)('person@example.test'), { ok: false });
+});
+
+test('password recovery propagates the original gateway error', async () => {
+  const fake = setup();
+  const error = new SyntaxError('Invalid JSON');
+  fake.gateway.requestPasswordReset = async () => { throw error; };
+  await assert.rejects(createRequestPasswordRecovery(fake.gateway)('person@example.test'), (caught) => caught === error);
 });

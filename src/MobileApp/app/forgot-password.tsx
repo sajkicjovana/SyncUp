@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { API_URL, apiCall } from '../config';
+import { requestPasswordRecovery } from '../src/di/auth';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
@@ -16,16 +16,8 @@ export default function ForgotPasswordScreen() {
     }
 
     try {
-      const response = await apiCall(`${API_URL}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t('genericError'));
-      }
+      const result = await requestPasswordRecovery(email);
+      if (!result.ok) throw new Error(result.message || t('genericError'));
 
       Alert.alert(t('success'), t('resetLinkSent'));
     } catch (err: any) {
