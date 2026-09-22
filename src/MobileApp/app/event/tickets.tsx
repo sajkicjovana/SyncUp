@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiCall } from '../../config';
 import {
   View,
   Text,
@@ -11,31 +10,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { API_URL } from '../../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-type Ticket = {
-  id: number;
-  name: string;
-  price: number;
-  available: number;
-};
-
-type Resource = {
-  id: number;
-  name: string;
-  price?: number;
-  quantity: number;
-  measure: string;
-};
+import { loadTicketSelectionOptions } from '../../src/di/ticketSelection';
+import type { TicketOption, ResourceOption } from '../../src/application/ticketSelection/ports';
 
 export default function TicketPurchaseScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
 
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [tickets, setTickets] = useState<TicketOption[]>([]);
+  const [resources, setResources] = useState<ResourceOption[]>([]);
   const [cart, setCart] = useState<{ [key: number]: number }>({});
   const [selectedResources, setSelectedResources] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -47,32 +31,7 @@ export default function TicketPurchaseScreen() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
-
-        const [ticketsRes, resourcesRes] = await Promise.all([
-          apiCall(`${API_URL}/api/Ticket/events/${eventId}/tickets`),
-          apiCall(`${API_URL}/api/Resource/${eventId}/resources`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        const ticketData = ticketsRes.ok ? await ticketsRes.json() : [];
-        const rawResources = resourcesRes.ok ? await resourcesRes.json() : [];
-
-        const mappedTickets = ticketData.map((t: any, index: number) => ({
-          id: t.ticketID ?? index,
-          name: t.typeName,
-          price: t.price,
-          available: t.available,
-        }));
-
-        const mappedResources = rawResources.map((r: any, index: number) => ({
-          id: r.id ?? index,
-          name: r.name,
-          price: r.price ?? undefined,
-          quantity: r.quantity,
-          measure: r.measure,
-        }));
+        const { tickets: mappedTickets, resources: mappedResources } = await loadTicketSelectionOptions(eventId);
 
         setTickets(mappedTickets);
         setResources(mappedResources);
