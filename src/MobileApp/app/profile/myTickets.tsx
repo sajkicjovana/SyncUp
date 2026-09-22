@@ -7,38 +7,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../config';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { apiCall } from '../../config';
-
-type PurchasedTicket = {
-  ticketID: number;
-  purchasedAt: string;
-  ticketType: string;
-  eventName: string;
-  price: number;
-  eventID: number; 
-  userTicketID: number;
-  validationToken: string;
-  eventImage?: string;
-};
-
-type GroupedTicket = {
-  ticketType: string;
-  eventName: string;
-  price: number;
-  quantity: number;
-  eventID: number; 
-  purchasedAt: string[];
-  ticketIDs: number[];
-};
+import { loadMyTickets } from '../../src/di/myTickets';
+import { MyTicketsTokenReadError } from '../../src/application/myTickets/useCases';
+import type { GroupedMyTicket } from '../../src/application/myTickets/ports';
 
 export default function ProfileTickets() {
-  const [groupedTickets, setGroupedTickets] = useState<GroupedTicket[]>([]);
-  const [ticketsData, setTicketsData] = useState<PurchasedTicket[]>([]);
+  const [groupedTickets, setGroupedTickets] = useState<GroupedMyTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { from } = useLocalSearchParams();
@@ -47,82 +24,43 @@ export default function ProfileTickets() {
   useEffect(() => {
     const fetchTickets = async () => {
       setLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const res = await apiCall(`${API_URL}/api/ticket/tickets/my`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (res.ok) {
-          const data: PurchasedTicket[] = await res.json();
-          setTicketsData(data);
-
-          const grouped: { [key: string]: GroupedTicket } = {};
-          data.forEach((ticket) => {
-            const key = `${ticket.eventName}_${ticket.ticketType}`;
-            if (!grouped[key]) {
-              grouped[key] = {
-                ticketType: ticket.ticketType,
-                eventName: ticket.eventName,
-                price: ticket.price,
-                quantity: 1,
-                eventID: ticket.eventID ?? 0,
-                purchasedAt: [ticket.purchasedAt],
-                ticketIDs: [ticket.userTicketID],
-              };
-            } else {
-              grouped[key].quantity += 1;
-              grouped[key].ticketIDs.push(ticket.userTicketID);
-              grouped[key].purchasedAt.push(ticket.purchasedAt);
-            }
-          });
-
-          const groupedArray = Object.values(grouped);
-          groupedArray.sort(
-              (a, b) => new Date(b.purchasedAt[b.purchasedAt.length - 1]).getTime()
-                      - new Date(a.purchasedAt[a.purchasedAt.length - 1]).getTime()
-            );
-
-          setGroupedTickets(groupedArray);
-
-        } else {
-          console.warn('Failed to fetch tickets');
+        const result = await loadMyTickets();
+        if (result.status === 'missing-token') {
+          setLoading(false);
+          return;
         }
+
+        if (result.status === 'non-ok') {
+          console.warn('Failed to fetch tickets');
+          setLoading(false);
+          return;
+        }
+
+        setGroupedTickets(result.tickets);
       } catch (error) {
+        if (error instanceof MyTicketsTokenReadError) throw error;
         console.error(error);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     fetchTickets();
   }, []);
 
-  const renderItem = ({ item }: { item: GroupedTicket }) => (
+  const renderItem = ({ item }: { item: GroupedMyTicket }) => (
     <TouchableOpacity
       style={styles.ticketItem}
       activeOpacity={0.7}
       onPress={() => {
-        const ticketTokens: string[] = item.ticketIDs.map(id => {
-          const original = ticketsData.find(t => t.userTicketID === id);
-          return original?.validationToken || '';
-        });
-
         router.push({
           pathname: '../event/ticketDetails',
           params: {
-            ticketIDs: JSON.stringify(item.ticketIDs),
-            validationTokens: JSON.stringify(ticketTokens),
+            ticketIDs: JSON.stringify(item.ticketIds),
+            validationTokens: JSON.stringify(item.validationTokens),
             eventName: item.eventName,
             ticketType: item.ticketType,
-            eventID: item.eventID,
+            eventID: item.eventId,
             purchasedAt: JSON.stringify(item.purchasedAt),
             price: item.price.toString(),
             from: 'myTickets', 
@@ -181,8 +119,8 @@ export default function ProfileTickets() {
           <FlatList
             data={groupedTickets}
             keyExtractor={(item, index) =>
-              item.ticketIDs.length > 0
-                ? item.ticketIDs.join('-')
+              item.ticketIds.length > 0
+                ? item.ticketIds.join('-')
                 : `${item.eventName}-${item.ticketType}-${index}`
             }
             renderItem={renderItem}
