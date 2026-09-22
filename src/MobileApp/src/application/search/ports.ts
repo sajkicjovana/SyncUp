@@ -1,9 +1,7 @@
-import type { SearchEvent, SearchPrice } from '../../domain/search';
-
-export type SearchParameters = [string, string][];
+import type { SearchCriteria, SearchEvent, SearchPrice } from '../../domain/search';
 
 export interface SearchGateway {
-  search(parameters: SearchParameters): Promise<SearchEvent[]>;
+  search(criteria: SearchCriteria): Promise<SearchEvent[]>;
   getLocationEvents(): Promise<SearchEvent[]>;
   getEventPrice(eventId: number): Promise<SearchPrice>;
 }
