@@ -44,11 +44,17 @@ function projectReservationDetails(
   const eventReservations = rows.filter((row) => row.EventID == routeEventId);
   if (eventReservations.length === 0) return null;
 
-  const groupedResources: Record<string, ReservationDetailsResource> = {};
+  const stableGroups = new Map<number | string, ReservationDetailsResource>();
+  const fallbackGroups = new Map<string, ReservationDetailsResource>();
+  const groupedResources: ReservationDetailsResource[] = [];
   eventReservations.forEach((row) => {
-    const key = row.ResourceName;
-    if (!groupedResources[key]) {
-      groupedResources[key] = {
+    const stableId = row.EventResourceID as number | string | null | undefined;
+    const group = stableId == null
+      ? fallbackGroups.get(row.ResourceName)
+      : stableGroups.get(stableId);
+
+    if (!group) {
+      const newGroup: ReservationDetailsResource = {
         ReservationID: row.ReservationID,
         ResourceName: row.ResourceName,
         ResourceCategory: row.ResourceCategory,
@@ -61,17 +67,24 @@ function projectReservationDetails(
         EventEndDate: row.EventEndDate,
         UserTickets: row.UserTickets ?? [],
       };
+
+      if (stableId == null) {
+        fallbackGroups.set(row.ResourceName, newGroup);
+      } else {
+        stableGroups.set(stableId, newGroup);
+      }
+      groupedResources.push(newGroup);
     } else {
-      groupedResources[key].Quantity += row.Quantity;
-      if (new Date(row.ReservedAt) > new Date(groupedResources[key].ReservedAt)) {
-        groupedResources[key].ReservedAt = row.ReservedAt;
+      group.Quantity += row.Quantity;
+      if (new Date(row.ReservedAt) > new Date(group.ReservedAt)) {
+        group.ReservedAt = row.ReservedAt;
       }
     }
   });
 
   return {
     EventTitle: eventReservations[0].EventTitle,
-    Resources: Object.values(groupedResources),
+    Resources: groupedResources,
   };
 }
 

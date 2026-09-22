@@ -221,12 +221,12 @@ test('Reservation Details treats resource-only data with no tickets as valid det
   }
 });
 
-test('Reservation Details preserves first-row metadata, groups exact names, sums raw quantities, duplicates rows and does not mutate input', async () => {
+test('Reservation Details groups by stable ID, preserves first-row metadata, sums duplicates and does not mutate input', async () => {
   const tickets = [{ UserTicketID: 1, ticketType: 'Standard' }];
-  const laterSameName = {
+  const laterSameAllocation = {
     ...row,
     ReservationID: 8,
-    EventResourceID: 71,
+    ResourceName: 'Later water name',
     EventTitle: 'Later title',
     EventDate: 'later date',
     EventEndDate: 'later end',
@@ -238,7 +238,7 @@ test('Reservation Details preserves first-row metadata, groups exact names, sums
   };
   const first = { ...row, UserTickets: tickets };
   const chair = { ...row, ReservationID: 9, EventResourceID: 72, ResourceName: 'Chair', Quantity: 1 };
-  const rows = [first, laterSameName, first, chair];
+  const rows = [first, laterSameAllocation, first, chair];
   const before = JSON.parse(JSON.stringify(rows));
   const gateway: ReservationsGateway = {
     loadMyReservations: async () => ({ ok: true, rows }),
@@ -281,6 +281,35 @@ test('Reservation Details preserves first-row metadata, groups exact names, sums
       ],
     },
   });
+});
+
+test('Reservation Details keeps different stable IDs separate when resource names match', async () => {
+  const secondAllocation = {
+    ...row,
+    ReservationID: 8,
+    EventResourceID: 71,
+    Quantity: 3,
+  };
+  const gateway: ReservationsGateway = {
+    loadMyReservations: async () => ({ ok: true, rows: [row, secondAllocation] }),
+  };
+
+  const result = await createLoadReservationDetails(gateway, async () => 'token')('10');
+
+  assert.equal(result.status, 'loaded');
+  if (result.status === 'loaded') {
+    assert.deepEqual(
+      result.details?.Resources.map(resource => ({
+        ReservationID: resource.ReservationID,
+        ResourceName: resource.ResourceName,
+        Quantity: resource.Quantity,
+      })),
+      [
+        { ReservationID: 7, ResourceName: 'Water', Quantity: 2 },
+        { ReservationID: 8, ResourceName: 'Water', Quantity: 3 },
+      ],
+    );
+  }
 });
 
 test('Reservation Details preserves raw JavaScript quantity addition', async () => {
@@ -357,19 +386,21 @@ test('Reservation Details preserves invalid-date comparison behavior', async () 
   }
 });
 
-test('Reservation Details preserves plain-object ordering for integer-like resource names and first-group ticket semantics', async () => {
+test('Reservation Details preserves first encounter for numeric-looking names and first-group ticket semantics', async () => {
   const ten = {
     ...row,
+    EventResourceID: 10,
     ResourceName: '10',
     UserTickets: [{ UserTicketID: 10, ticketType: 'Ten' }],
   };
   const two = {
     ...row,
     ReservationID: 8,
+    EventResourceID: 2,
     ResourceName: '2',
     UserTickets: [{ UserTicketID: 2, ticketType: 'Two' }],
   };
-  const ordinary = { ...row, ReservationID: 9, ResourceName: 'Chair' };
+  const ordinary = { ...row, ReservationID: 9, EventResourceID: 30, ResourceName: 'Chair' };
   const gateway: ReservationsGateway = {
     loadMyReservations: async () => ({ ok: true, rows: [ten, ordinary, two] }),
   };
@@ -378,8 +409,87 @@ test('Reservation Details preserves plain-object ordering for integer-like resou
 
   assert.equal(result.status, 'loaded');
   if (result.status === 'loaded') {
-    assert.deepEqual(result.details?.Resources.map(resource => resource.ResourceName), ['2', '10', 'Chair']);
-    assert.deepEqual(result.details?.Resources[0].UserTickets, two.UserTickets);
+    assert.deepEqual(result.details?.Resources.map(resource => resource.ResourceName), ['10', 'Chair', '2']);
+    assert.deepEqual(result.details?.Resources[0].UserTickets, ten.UserTickets);
+  }
+});
+
+test('Reservation Details keeps raw numeric and string stable IDs distinct without coercion', async () => {
+  const stringId = {
+    ...row,
+    ReservationID: 8,
+    EventResourceID: '70' as unknown as number,
+    ResourceName: 'String ID resource',
+  };
+  const gateway: ReservationsGateway = {
+    loadMyReservations: async () => ({ ok: true, rows: [row, stringId] }),
+  };
+
+  const result = await createLoadReservationDetails(gateway, async () => 'token')('10');
+
+  assert.equal(result.status, 'loaded');
+  if (result.status === 'loaded') {
+    assert.deepEqual(
+      result.details?.Resources.map(resource => resource.ResourceName),
+      ['Water', 'String ID resource'],
+    );
+  }
+});
+
+test('Reservation Details isolates nullish name fallback from stable IDs and preserves mixed encounter order', async () => {
+  const nullFallback = {
+    ...row,
+    EventResourceID: null as unknown as number,
+    ResourceName: 'shared-key',
+  };
+  const stableStringCollision = {
+    ...row,
+    ReservationID: 8,
+    EventResourceID: 'shared-key' as unknown as number,
+    ResourceName: 'Stable string ID',
+    Quantity: 3,
+  };
+  const stableNumber = {
+    ...row,
+    ReservationID: 9,
+    EventResourceID: 9,
+    ResourceName: 'Stable number ID',
+    Quantity: 1,
+  };
+  const undefinedFallback = {
+    ...row,
+    ReservationID: 10,
+    EventResourceID: undefined as unknown as number,
+    ResourceName: 'shared-key',
+    Quantity: 4,
+  };
+  const secondFallback = {
+    ...row,
+    ReservationID: 11,
+    EventResourceID: undefined as unknown as number,
+    ResourceName: 'second fallback',
+    Quantity: 5,
+  };
+  const gateway: ReservationsGateway = {
+    loadMyReservations: async () => ({
+      ok: true,
+      rows: [nullFallback, stableStringCollision, stableNumber, undefinedFallback, secondFallback],
+    }),
+  };
+
+  const result = await createLoadReservationDetails(gateway, async () => 'token')('10');
+
+  assert.equal(result.status, 'loaded');
+  if (result.status === 'loaded') {
+    assert.deepEqual(
+      result.details?.Resources.map(resource => [resource.ResourceName, resource.Quantity]),
+      [
+        ['shared-key', 6],
+        ['Stable string ID', 3],
+        ['Stable number ID', 1],
+        ['second fallback', 5],
+      ],
+    );
   }
 });
 
