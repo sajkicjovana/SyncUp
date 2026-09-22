@@ -1,78 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { API_URL } from '../../config';
-import { apiCall } from '../../config';
-
-type Reservation = {
-  EventID: number;
-  EventTitle: string;
-  EventDate: string;
-  EventEndDate: string;
-  EventLocation: string;
-  IsEventFree: boolean;
-  Resources: {
-    Name: string;
-    Quantity: number;
-  }[];
-};
+import { loadMyReservations } from '../../src/di/reservations';
+import type { EventReservationSummary } from '../../src/application/reservations/ports';
 
 export default function MyReservations() {
   const { t } = useTranslation();
   const router = useRouter();
   const { from } = useLocalSearchParams();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [reservations, setReservations] = useState<EventReservationSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchReservations = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
+        const result = await loadMyReservations();
+        if (result.status === 'missing-token') {
           setLoading(false);
           return;
         }
 
-        const res = await apiCall(`${API_URL}/api/Resource/my-reservations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
+        if (result.status === 'non-ok') {
           console.warn('Failed to fetch reservations');
           setLoading(false);
           return;
         }
 
-        const data = await res.json();
-
-        // Grupisanje podataka po EventID
-        const grouped: Record<number, Reservation> = {};
-        data.forEach((r: any) => {
-          if (!grouped[r.eventID]) {
-            grouped[r.eventID] = {
-              EventID: r.eventID,
-              EventTitle: r.eventTitle,
-              EventDate: r.eventDate,
-              EventEndDate: r.eventEndDate,
-              EventLocation: r.eventLocation,
-              IsEventFree: r.isEventFree,
-              Resources: [],
-            };
-          }
-          grouped[r.eventID].Resources.push({
-            Name: r.resourceName,
-            Quantity: r.quantity,
-          });
-        });
-
-        const allReservations = Object.values(grouped);
-
-        // console.log('Grouped reservations:', allReservations);
-
-        setReservations(allReservations);
+        setReservations(result.reservations);
 
       } catch (err) {
         console.error(err);
