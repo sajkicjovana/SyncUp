@@ -1,8 +1,0 @@
-<button (click)="loadUsers()">Show All Users</button>
-
-<ul>
-  <li *ngFor="let user of users" (click)="deleteUser(user.id)" style="cursor: pointer;">
-    {{ user.name }} ({{ user.email }})
-    <span style="color: red;">[click to delete]</span>
-  </li>
-</ul>
