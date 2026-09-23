@@ -13,10 +13,10 @@ import QRCode from 'react-native-qrcode-svg';
 import { useLocalSearchParams } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { API_URL } from '../../config';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { loadPersonalInfo } from '../../src/di/profile';
+import { buildTicketValidationUrl } from '../../src/di/ticketDetails';
 
 type TicketType = {
   id: number;
@@ -202,7 +202,7 @@ if (purchasedAt) {
 
           {token ? (
             <QRCode
-              value={`${API_URL}/api/TicketValidation/validate/${id}/${token}`}
+              value={buildTicketValidationUrl(id, token)}
               size={250}
               backgroundColor="white"
               color="black"
