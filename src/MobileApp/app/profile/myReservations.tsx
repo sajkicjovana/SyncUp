@@ -1,14 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, BackHandler, Platform } from 'react-native';
-import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
+import {
+  ActivityIndicator,
+  BackHandler,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { loadMyReservations } from '../../src/di/reservations';
 import type { EventReservationSummary } from '../../src/application/reservations/ports';
+import { theme } from '../../constants/theme';
 
 export default function MyReservations() {
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const [reservations, setReservations] = useState<EventReservationSummary[]>([]);
@@ -61,29 +73,38 @@ export default function MyReservations() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#3478f6" />
-        <Text style={{ marginTop: 10 }}>{t('loading') || 'Loading...'}</Text>
+      <View style={[styles.center, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>{t('loading') || 'Loading...'}</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={28} color="black" />
+      <View style={[styles.headerContainer, { paddingTop: insets.top + theme.spacing.sm }]}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.header}>{t('myReservations.title') || 'My Reservations'}</Text>
       </View>
 
-      <ScrollView style={styles.scroll}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={
+          reservations.length === 0 ? styles.emptyContent : styles.scrollContent
+        }
+        showsVerticalScrollIndicator={false}
+      >
         {reservations.length === 0 && (
-          <Text style={{ textAlign: 'center', marginTop: 50 }}>{t('myReservations.noReservations') || 'No reservations found'}</Text>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="layers-outline" size={28} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.emptyText}>
+              {t('myReservations.noReservations') || 'No reservations found'}
+            </Text>
+          </View>
         )}
 
         {reservations.map((event, index) => {
@@ -94,12 +115,52 @@ export default function MyReservations() {
             <TouchableOpacity
               key={index}
               style={styles.eventCard}
-              activeOpacity={0.8}
-              onPress={() => router.push({ pathname: `../event/reservationsDetails`, params: { eventID: event.EventID } })}
+              activeOpacity={0.7}
+              onPress={() =>
+                router.push({
+                  pathname: '../event/reservationsDetails',
+                  params: { eventID: event.EventID },
+                })
+              }
             >
-              <Text style={styles.eventTitle}>{event.EventTitle}</Text>
-              <Text style={styles.resourceText}>Resources: {resourceNames}</Text>
-              <Text style={styles.quantityText}>Quantity: {totalQuantity}</Text>
+              <View style={styles.accent}>
+                <Ionicons name="layers-outline" size={22} color={theme.colors.primary} />
+              </View>
+
+              <View style={styles.cardContent}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.eventTitle}>{event.EventTitle}</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={22}
+                    color={theme.colors.textMuted}
+                  />
+                </View>
+
+                <Text style={styles.resourceText}>Resources: {resourceNames}</Text>
+
+                <View style={styles.metadataRow}>
+                  <View style={styles.metadataItem}>
+                    <Ionicons
+                      name="cube-outline"
+                      size={16}
+                      color={theme.colors.textMuted}
+                    />
+                    <Text style={styles.metadataText}>Quantity: {totalQuantity}</Text>
+                  </View>
+                  <View style={styles.metadataItem}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={16}
+                      color={theme.colors.textMuted}
+                    />
+                    <Text style={styles.metadataText}>
+                      {new Date(event.EventDate).toLocaleDateString()} -{' '}
+                      {new Date(event.EventEndDate).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -109,27 +170,99 @@ export default function MyReservations() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scroll: { paddingHorizontal: 16, paddingBottom: 24 },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 35, paddingBottom: 30 },
-  backButton: { marginRight: 12, padding: 6, borderRadius: 8 },
-  header: { fontSize: 28, fontWeight: 'bold', color: '#2c3e50', flex: 1, textAlign: 'center', marginRight: 40 },
-
-  eventCard: {
-    backgroundColor: '#fefefe',
-    padding: 20,
-    borderRadius: 14,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#e1e4e8',
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
   },
-  eventTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8, color: '#3478f6' },
-  resourceText: { fontSize: 16, marginBottom: 4 },
-  quantityText: { fontSize: 16, fontWeight: '600' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.screen,
+    paddingBottom: theme.spacing.lg,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flex: 1,
+    marginRight: 44,
+    color: theme.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  eventCard: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.card,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
+  },
+  accent: {
+    width: 40,
+    height: 40,
+    marginRight: theme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radii.control,
+  },
+  cardContent: { flex: 1 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eventTitle: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+    color: theme.colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  resourceText: {
+    marginTop: theme.spacing.xs,
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  metadataRow: { marginTop: theme.spacing.md, gap: theme.spacing.sm },
+  metadataItem: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  metadataText: { flex: 1, color: theme.colors.textSecondary, fontSize: 12 },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  loadingText: { marginTop: theme.spacing.sm, color: theme.colors.textSecondary },
+  emptyContent: { flexGrow: 1, paddingHorizontal: theme.spacing.lg },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    marginBottom: theme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radii.round,
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+    fontSize: 16,
+    textAlign: 'center',
+  },
 });
