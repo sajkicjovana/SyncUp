@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Image,
   ActivityIndicator,
   Switch,
   KeyboardAvoidingView,
@@ -21,8 +20,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { API_URL as BASE_URL } from '../../config';
-import { AntDesign } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
+import { CompactEventCard } from '../../components/CompactEventCard';
+import { theme } from '../../constants/theme';
 
 import { searchUseCases } from '../../src/di/search';
 import { readAuthToken } from '../../src/di/auth';
@@ -225,9 +225,24 @@ useEffect(() => {
     // uzmi cene iz eventPrices mape
     const priceObj = eventPrices[item.id];
 
+    const priceLabel = priceObj
+      ? ((!priceObj.minPrice && !priceObj.maxPrice) ||
+        (priceObj.minPrice === 0 && priceObj.maxPrice === 0))
+        ? t('freeEvent')
+        : priceObj.minPrice === priceObj.maxPrice
+          ? `${priceObj.minPrice} RSD`
+          : `${priceObj.minPrice} - ${priceObj.maxPrice} RSD`
+      : t('search.loadingPrice');
+
     return (
-      <TouchableOpacity
-        style={styles.eventItem}
+      <CompactEventCard
+        imageUri={`${API_URL}/${item.imageUrl}`}
+        imageLoading={Boolean(imageLoading[item.id])}
+        title={item.title || 'No title'}
+        date={formattedDate}
+        location={item.location || 'No location'}
+        priceLabel={priceLabel}
+        isFavorite={isFavorite}
         onPress={() => {
           const searchReturnKey = captureSearchReturnState({
             searchQuery,
@@ -246,66 +261,17 @@ useEffect(() => {
             params: { id: String(item.id), from: 'search', searchReturnKey },
           });
         }}
-      >
-        <View style={{ position: 'relative' }}>
-  {imageLoading[item.id] && (
-    <ActivityIndicator
-      size="small"
-      color="#007AFF"
-      style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: [{ translateX: -12 }, { translateY: -12 }],
-        zIndex: 1,
-        width: 24,
-        height: 24,
-      }}
-    />
-  )}
-  <Image
-    source={{ uri: `${API_URL}/${item.imageUrl}` }}
-    style={styles.eventImage}
-    onLoadStart={() =>
-      setImageLoading((prev) => ({ ...prev, [item.id]: true }))
-    }
-    onLoad={() =>
-      setImageLoading((prev) => ({ ...prev, [item.id]: false }))
-    }
-    onError={() =>
-      setImageLoading((prev) => ({ ...prev, [item.id]: false }))
-    }
-  />
-</View>
-        <View style={styles.eventContent}>
-          <Text style={styles.eventTitle}>{item.title || 'No title'}</Text>
-          <Text style={styles.eventDate}>{formattedDate}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-            <Text style={[styles.eventLocation, { marginRight: 8 }]}>
-              {item.location || 'No location'}
-            </Text>
-            </View>
-<Text style={styles.eventPrice}>
-  {priceObj
-    ? ( (!priceObj.minPrice && !priceObj.maxPrice) || (priceObj.minPrice === 0 && priceObj.maxPrice === 0) )
-      ? t('freeEvent')
-      : priceObj.minPrice === priceObj.maxPrice
-        ? `${priceObj.minPrice} RSD`
-        : `${priceObj.minPrice} - ${priceObj.maxPrice} RSD`
-    : t('search.loadingPrice')}
-</Text>
-
-
-          
-        </View>
-
-        <TouchableOpacity
-          style={styles.favoriteIcon}
-          onPress={() => handleToggleFavorite(item.id)}
-        >
-          <AntDesign name="heart" size={24} color={isFavorite ? '#FF2D55' : '#ccc'} />
-        </TouchableOpacity>
-      </TouchableOpacity>
+        onToggleFavorite={() => handleToggleFavorite(item.id)}
+        favoriteAccessibilityLabel={
+          isFavorite ? t('removeFromFavorites') : t('addToFavorites')
+        }
+        onImageLoadStart={() =>
+          setImageLoading((prev) => ({ ...prev, [item.id]: true }))
+        }
+        onImageLoadEnd={() =>
+          setImageLoading((prev) => ({ ...prev, [item.id]: false }))
+        }
+      />
     );
   };
 
@@ -317,13 +283,16 @@ useEffect(() => {
       <View style={styles.container}>
         <Text style={styles.header}>{t('search.header')}</Text>
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder={t('search.placeholder')}
-          placeholderTextColor="#9CA3AF" 
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search-outline" size={19} color={theme.colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('search.placeholder')}
+            placeholderTextColor={theme.colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
 
         <DropDownPicker
           open={locationOpen}
@@ -354,7 +323,7 @@ useEffect(() => {
 
         <View style={styles.dateRow}>
           <TouchableOpacity onPress={() => setShowStartPicker(true)} style={styles.dateButton}>
-            <Ionicons name="calendar-outline" size={18} color="black" />
+            <Ionicons name="calendar-outline" size={18} color={theme.colors.primaryDark} />
             <Text style={styles.dateButtonText}>
               {startDate ? startDate.toDateString() : t('search.startDate')}
             </Text>
@@ -375,7 +344,7 @@ useEffect(() => {
           )}
 
           <TouchableOpacity onPress={() => setShowEndPicker(true)} style={styles.dateButton}>
-            <Ionicons name="calendar-outline" size={18} color="black" />
+            <Ionicons name="calendar-outline" size={18} color={theme.colors.primaryDark} />
             <Text style={styles.dateButtonText}>
               {endDate ? endDate.toDateString() : t('search.endDate')}
             </Text>
@@ -423,12 +392,13 @@ useEffect(() => {
           </View>
 
           <TouchableOpacity onPress={clearFilters} style={styles.clearButton}>
+            <Ionicons name="refresh-outline" size={16} color={theme.colors.primaryDark} />
             <Text style={styles.clearButtonText}>{t('search.reset')}</Text>
           </TouchableOpacity>
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#0000ff" style={{ marginTop: 20 }} />
+          <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
         ) : events.length === 0 ? (
           <Text style={{ textAlign: 'center', marginTop: 20 }}>{t('search.noResults')}</Text>
         ) : (
@@ -436,6 +406,7 @@ useEffect(() => {
             data={events}
             renderItem={renderEventItem}
             keyExtractor={(item, index) => (item.id ? item.id.toString() : index.toString())}
+            ItemSeparatorComponent={() => <View style={styles.resultSeparator} />}
             contentContainerStyle={{ paddingBottom: 40 }}
             style={{ marginTop: 10 }}
           />
@@ -448,80 +419,76 @@ useEffect(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    backgroundColor: '#f0f4f8',
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    backgroundColor: theme.colors.background,
   },
 
   header: {
-    fontSize: 28,
-    fontWeight: '900',
-    marginBottom: 25,
-    color: '#1a202c',
-    letterSpacing: 1,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: theme.spacing.lg,
+    color: theme.colors.textPrimary,
     textAlign: 'center',
   },
 
-  searchInput: {
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     height: 48,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    paddingHorizontal: 18,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.control,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: theme.spacing.sm,
     fontSize: 16,
-    fontWeight: '500',
-    color: '#2d3748',
-    marginBottom: 12, // malo manje mesta dole nego pre
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 12,
-    elevation: 6,
+    color: theme.colors.textPrimary,
   },
 
   dropdown: {
-    marginBottom: 12, // smanjen razmak dole
-    borderRadius: 15,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 4,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.radii.control,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    minHeight: 46,
   },
 
   dropdownContainer: {
-    borderRadius: 15,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#fff',
+    borderRadius: theme.radii.control,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
 
   dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12, // malo manji razmak
+    marginBottom: theme.spacing.sm,
   },
 
   dateButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    paddingHorizontal: 18,
-    height: 48,
-    marginHorizontal: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.control,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.sm,
+    height: 46,
+    marginHorizontal: 4,
   },
 
   dateButtonText: {
-    marginLeft: 8,
-    fontSize: 15,
-    color: '#4a5568',
+    marginLeft: theme.spacing.sm,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
 
@@ -529,9 +496,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,  // manji razmak sa vrha
-    marginBottom: 14, // manji razmak dole
-    paddingHorizontal: 4,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
 
   filterRow: {
@@ -540,88 +506,34 @@ const styles = StyleSheet.create({
   },
 
   filterLabel: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#2d3748',
-    marginRight: 12,
+    color: theme.colors.textPrimary,
+    marginRight: theme.spacing.sm,
   },
 
   clearButton: {
-    backgroundColor: '#ef4444',
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    borderRadius: 20,
-    shadowColor: '#ef4444',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 12,
-    elevation: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radii.control,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
 
   clearButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-
-  eventItem: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 50, // povećan razmak između eventova i od dna
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 8,
-    alignItems: 'center',
-  },
-
-  eventImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 20,
-    backgroundColor: '#e2e8f0',
-  },
-
-  eventContent: {
-    flex: 1,
-    paddingLeft: 16,
-    justifyContent: 'center',
-  },
-
-  eventTitle: {
-    fontSize: 19,
-    fontWeight: '900',
-    color: '#1a202c',
-  },
-
-  eventDate: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#718096',
+    color: theme.colors.primaryDark,
     fontWeight: '600',
+    fontSize: 13,
   },
 
-  eventLocation: {
-    marginTop: 6,
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#4a5568',
+  resultSeparator: {
+    height: 12,
   },
 
-  eventPrice: {
-    marginTop: 8,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2c7a7b',
-  },
-
-  favoriteIcon: {
-    justifyContent: 'center',
-    paddingLeft: 14,
-  },
 });
 
 export default SearchScreen;
