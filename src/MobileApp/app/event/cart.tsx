@@ -15,6 +15,7 @@ import { loadCartDisplayData, purchaseStandardCart, reserveResourcesWithoutTicke
 import { CartStandardPurchaseError } from '../../src/application/cart/useCases';
 import type { CartTicketDisplayItem, CartResourceDisplayItem } from '../../src/application/cart/ports';
 import { readAuthToken } from '../../src/di/auth';
+import { theme } from '../../constants/theme';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -175,35 +176,45 @@ export default function CartScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity onPress={() => router.back()} style={styles.backArrow}>
-        <Ionicons name="arrow-back" size={24} color="black" />
+        <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
       </TouchableOpacity>
       <Text style={styles.title}>{t('cart.title')}</Text>
 
-      <Text style={styles.sectionTitle}>{t('cart.tickets')}</Text>
-      {selectedTickets.length === 0 && <Text>{t('cart.noTickets')}</Text>}
-      {selectedTickets.map(ticket => {
-        const info = getTicketInfo(ticket.id);
-        if (!info) return null;
-        return (
-          <View key={`ticket-${ticket.id}`} style={styles.itemRow}>
-            <Text style={styles.itemText}>{info.name} x {ticket.quantity}</Text>
-            <Text style={styles.itemPrice}>{info.price * ticket.quantity} RSD</Text>
-          </View>
-        );
-      })}
+      <View style={styles.sectionHeading}>
+        <Ionicons name="ticket-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.sectionTitle}>{t('cart.tickets')}</Text>
+      </View>
+      <View style={styles.summaryCard}>
+        {selectedTickets.length === 0 && <Text style={styles.emptyText}>{t('cart.noTickets')}</Text>}
+        {selectedTickets.map(ticket => {
+          const info = getTicketInfo(ticket.id);
+          if (!info) return null;
+          return (
+            <View key={`ticket-${ticket.id}`} style={styles.itemRow}>
+              <Text style={styles.itemText}>{info.name} x {ticket.quantity}</Text>
+              <Text style={styles.itemPrice}>{info.price * ticket.quantity} RSD</Text>
+            </View>
+          );
+        })}
+      </View>
 
-      <Text style={styles.sectionTitle}>{t('cart.resources')}</Text>
-      {selectedResources.length === 0 && <Text>{t('cart.noResources')}</Text>}
-      {selectedResources.map(resId => {
-        const res = getResourceInfo(resId);
-        if (!res) return null;
-        return (
-          <View key={`res-${resId}`} style={styles.itemRow}>
-            <Text style={styles.itemText}>{res.name}</Text>
-            <Text style={styles.itemPrice}>{res.price ? `${res.price} RSD` : t('cart.free')}</Text>
-          </View>
-        );
-      })}
+      <View style={styles.sectionHeading}>
+        <Ionicons name="cube-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.sectionTitle}>{t('cart.resources')}</Text>
+      </View>
+      <View style={styles.summaryCard}>
+        {selectedResources.length === 0 && <Text style={styles.emptyText}>{t('cart.noResources')}</Text>}
+        {selectedResources.map(resId => {
+          const res = getResourceInfo(resId);
+          if (!res) return null;
+          return (
+            <View key={`res-${resId}`} style={styles.itemRow}>
+              <Text style={styles.itemText}>{res.name}</Text>
+              <Text style={styles.itemPrice}>{res.price ? `${res.price} RSD` : t('cart.free')}</Text>
+            </View>
+          );
+        })}
+      </View>
 
       <View style={styles.totalRow}>
         <Text style={styles.totalText}>{t('cart.total')}:</Text>
@@ -226,7 +237,7 @@ export default function CartScreen() {
 
       {loading && (
         <View style={{ marginTop: 20 }}>
-          <ActivityIndicator size="large" color="#0047FF" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       )}
     </ScrollView>
@@ -234,15 +245,97 @@ export default function CartScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff', flexGrow: 1, marginTop: 30 },
-  backArrow: { position: 'absolute', top: 20, left: 10, zIndex: 10 },
-  title: { fontSize: 26, fontWeight: '700', textAlign: 'center', marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginVertical: 10, color: '#444' },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  itemText: { fontSize: 16, color: '#333' },
-  itemPrice: { fontSize: 16, color: '#000', fontWeight: '600' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 30, marginBottom: 20, borderTopWidth: 1, borderTopColor: '#ccc', paddingTop: 12 },
-  totalText: { fontSize: 18, fontWeight: 'bold' },
-  purchaseButton: { backgroundColor: '#0047FF', padding: 14, borderRadius: 8, alignItems: 'center' },
-  purchaseText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  container: {
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
+    backgroundColor: theme.colors.background,
+    flexGrow: 1,
+  },
+  backArrow: {
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 0,
+    alignSelf: 'flex-start',
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
+  },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  summaryCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+    gap: theme.spacing.md,
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+  },
+  itemPrice: {
+    fontSize: 16,
+    color: theme.colors.primaryDark,
+    fontWeight: '700',
+  },
+  emptyText: {
+    paddingVertical: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.textMuted,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.lg,
+  },
+  totalText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  purchaseButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    borderRadius: theme.radii.control,
+    alignItems: 'center',
+  },
+  purchaseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
