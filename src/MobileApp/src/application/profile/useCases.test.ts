@@ -4,12 +4,16 @@ import type { MyTicketRow, MyTicketsGateway } from '../myTickets/ports';
 import type { ReservationRow, ReservationsGateway } from '../reservations/ports';
 import type {
   CurrentProfileGateway,
+  PersonalInfoMutationGateway,
+  PersonalInfoUploadFailure,
   ProfileDashboardGateway,
   ProfileDashboardUpdate,
+  SavePersonalInfoInput,
 } from './ports';
 import {
   createLoadPersonalInfo,
   createLoadProfileDashboard,
+  createSavePersonalInfo,
   ProfileDashboardTokenReadError,
 } from './useCases';
 
@@ -440,4 +444,405 @@ test('token-reader rejection is marked separately and makes no remote calls or u
   );
   assert.equal(calls, 0);
   assert.deepEqual(updates, []);
+});
+
+const baseSaveInput: SavePersonalInfoInput = {
+  firstName: '  Ana  ',
+  lastName: ' Anic ',
+  email: ' ana@example.test ',
+  phoneNumber: ' +381601234567 ',
+  imageChange: {
+    kind: 'keep',
+    profilePicture: 'http://example.test/current.jpg',
+  },
+};
+
+function mutationGateway(
+  overrides: Partial<PersonalInfoMutationGateway> = {},
+): PersonalInfoMutationGateway {
+  return {
+    updateProfile: async () => ({ ok: true }),
+    uploadProfileImage: async () => ({
+      ok: true,
+      imageUrl: 'http://example.test/uploaded.jpg',
+    }),
+    deleteProfileImage: async () => ({ ok: true }),
+    ...overrides,
+  };
+}
+
+test('save with a null or empty initial token performs no mutations', async () => {
+  for (const missingToken of [null, '']) {
+    let tokenReads = 0;
+    let mutations = 0;
+    const gateway = mutationGateway({
+      updateProfile: async () => { mutations++; return { ok: true }; },
+      uploadProfileImage: async () => {
+        mutations++;
+        return { ok: true, imageUrl: null };
+      },
+      deleteProfileImage: async () => { mutations++; return { ok: true }; },
+    });
+
+    assert.deepEqual(
+      await createSavePersonalInfo(
+        gateway,
+        async () => { tokenReads++; return missingToken; },
+      )(baseSaveInput, () => { throw new Error('must not observe upload failure'); }),
+      { status: 'missing-token' },
+    );
+    assert.equal(tokenReads, 1);
+    assert.equal(mutations, 0);
+  }
+});
+
+test('text-only save reads one token and forwards exact unchanged values only to update', async () => {
+  let tokenReads = 0;
+  const calls: unknown[] = [];
+  const gateway = mutationGateway({
+    async updateProfile(token, input) {
+      calls.push({ operation: 'update', token, input });
+      return { ok: true };
+    },
+    async uploadProfileImage() {
+      calls.push({ operation: 'upload' });
+      return { ok: true, imageUrl: null };
+    },
+    async deleteProfileImage() {
+      calls.push({ operation: 'delete' });
+      return { ok: true };
+    },
+  });
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => { tokenReads++; return 'primary-token'; },
+    )(baseSaveInput, () => { throw new Error('must not observe upload failure'); }),
+    {
+      status: 'saved',
+      profilePicture: 'http://example.test/current.jpg',
+    },
+  );
+  assert.equal(tokenReads, 1);
+  assert.deepEqual(calls, [{
+    operation: 'update',
+    token: 'primary-token',
+    input: {
+      firstName: '  Ana  ',
+      lastName: ' Anic ',
+      email: ' ana@example.test ',
+      phoneNumber: ' +381601234567 ',
+      profilePicture: 'http://example.test/current.jpg',
+    },
+  }]);
+});
+
+test('successful upload reads twice, uploads with second token, then updates with first token', async () => {
+  const tokens = ['primary-token', 'upload-token'];
+  let tokenReads = 0;
+  const order: unknown[] = [];
+  const gateway = mutationGateway({
+    async uploadProfileImage(token, uri) {
+      order.push({ operation: 'upload', token, uri });
+      return { ok: true, imageUrl: 'http://example.test/new.jpg' };
+    },
+    async updateProfile(token, input) {
+      order.push({ operation: 'update', token, profilePicture: input.profilePicture });
+      return { ok: true };
+    },
+  });
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => tokens[tokenReads++],
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'upload', uri: 'file:///photo.jpg' } },
+      () => { throw new Error('must not observe upload failure'); },
+    ),
+    { status: 'saved', profilePicture: 'http://example.test/new.jpg' },
+  );
+  assert.equal(tokenReads, 2);
+  assert.deepEqual(order, [
+    {
+      operation: 'upload',
+      token: 'upload-token',
+      uri: 'file:///photo.jpg',
+    },
+    {
+      operation: 'update',
+      token: 'primary-token',
+      profilePicture: 'http://example.test/new.jpg',
+    },
+  ]);
+});
+
+test('rejected upload is observable once and update still runs with null', async () => {
+  const failures: PersonalInfoUploadFailure[] = [];
+  const order: unknown[] = [];
+  let uploadCalls = 0;
+  let updateCalls = 0;
+  const gateway = mutationGateway({
+    async uploadProfileImage() {
+      uploadCalls++;
+      order.push('upload');
+      return { ok: false, responseText: 'upload rejected' };
+    },
+    async updateProfile(token, input) {
+      updateCalls++;
+      order.push({ operation: 'update', token, profilePicture: input.profilePicture });
+      return { ok: true };
+    },
+  });
+  let tokenReads = 0;
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => ['primary-token', 'upload-token'][tokenReads++],
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'upload', uri: 'file:///photo.jpg' } },
+      failure => failures.push(failure),
+    ),
+    { status: 'saved', profilePicture: null },
+  );
+  assert.equal(tokenReads, 2);
+  assert.equal(uploadCalls, 1);
+  assert.equal(updateCalls, 1);
+  assert.deepEqual(order, [
+    'upload',
+    { operation: 'update', token: 'primary-token', profilePicture: null },
+  ]);
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0].kind, 'error');
+  if (failures[0].kind === 'error') {
+    assert.equal((failures[0].error as Error).message, 'upload rejected');
+  }
+});
+
+test('thrown upload failure remains observable and update still runs with null', async () => {
+  const failure = new Error('upload network failure');
+  const failures: PersonalInfoUploadFailure[] = [];
+  let updateCalls = 0;
+  const gateway = mutationGateway({
+    uploadProfileImage: async () => { throw failure; },
+    async updateProfile(_token, input) {
+      updateCalls++;
+      assert.equal(input.profilePicture, null);
+      return { ok: true };
+    },
+  });
+  let tokenReads = 0;
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => ['primary-token', 'upload-token'][tokenReads++],
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'upload', uri: 'file:///photo.jpg' } },
+      observed => failures.push(observed),
+    ),
+    { status: 'saved', profilePicture: null },
+  );
+  assert.equal(tokenReads, 2);
+  assert.equal(updateCalls, 1);
+  assert.deepEqual(failures, [{ kind: 'error', error: failure }]);
+});
+
+test('missing second upload token is observable and update still runs with null', async () => {
+  const failures: PersonalInfoUploadFailure[] = [];
+  let uploadCalls = 0;
+  let updateCalls = 0;
+  const gateway = mutationGateway({
+    uploadProfileImage: async () => {
+      uploadCalls++;
+      return { ok: true, imageUrl: 'unexpected' };
+    },
+    async updateProfile(token, input) {
+      updateCalls++;
+      assert.equal(token, 'primary-token');
+      assert.equal(input.profilePicture, null);
+      return { ok: true };
+    },
+  });
+  let tokenReads = 0;
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => ['primary-token', null][tokenReads++],
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'upload', uri: 'file:///photo.jpg' } },
+      failure => failures.push(failure),
+    ),
+    { status: 'saved', profilePicture: null },
+  );
+  assert.equal(tokenReads, 2);
+  assert.equal(uploadCalls, 0);
+  assert.equal(updateCalls, 1);
+  assert.deepEqual(failures, [{ kind: 'missing-token' }]);
+});
+
+test('thrown second upload token read is observable once and update still runs', async () => {
+  const failure = new Error('second storage read failed');
+  const failures: PersonalInfoUploadFailure[] = [];
+  let updateCalls = 0;
+  let tokenReads = 0;
+  const gateway = mutationGateway({
+    async updateProfile(_token, input) {
+      updateCalls++;
+      assert.equal(input.profilePicture, null);
+      return { ok: true };
+    },
+  });
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => {
+        tokenReads++;
+        if (tokenReads === 1) return 'primary-token';
+        throw failure;
+      },
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'upload', uri: 'file:///photo.jpg' } },
+      observed => failures.push(observed),
+    ),
+    { status: 'saved', profilePicture: null },
+  );
+  assert.equal(tokenReads, 2);
+  assert.equal(updateCalls, 1);
+  assert.deepEqual(failures, [{ kind: 'error', error: failure }]);
+});
+
+test('successful delete reads twice, deletes with second token, then updates empty picture with first', async () => {
+  const order: unknown[] = [];
+  let tokenReads = 0;
+  const gateway = mutationGateway({
+    async deleteProfileImage(token) {
+      order.push({ operation: 'delete', token });
+      return { ok: true };
+    },
+    async updateProfile(token, input) {
+      order.push({ operation: 'update', token, profilePicture: input.profilePicture });
+      return { ok: true };
+    },
+  });
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      gateway,
+      async () => ['primary-token', 'delete-token'][tokenReads++],
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'delete' } },
+      () => { throw new Error('must not observe upload failure'); },
+    ),
+    { status: 'saved', profilePicture: '' },
+  );
+  assert.equal(tokenReads, 2);
+  assert.deepEqual(order, [
+    { operation: 'delete', token: 'delete-token' },
+    { operation: 'update', token: 'primary-token', profilePicture: '' },
+  ]);
+});
+
+test('delete rejection, thrown failure, and missing second token all abort update', async () => {
+  const thrownFailure = new Error('delete network failure');
+  const cases: Array<{
+    secondToken: string | null;
+    deleteBehavior: PersonalInfoMutationGateway['deleteProfileImage'];
+    expected: unknown;
+  }> = [
+    {
+      secondToken: 'delete-token',
+      deleteBehavior: async () => ({ ok: false, responseText: 'delete rejected' }),
+      expected: { status: 'delete-rejected', responseText: 'delete rejected' },
+    },
+    {
+      secondToken: null,
+      deleteBehavior: async () => { throw new Error('must not call delete'); },
+      expected: { status: 'delete-missing-token' },
+    },
+  ];
+
+  for (const testCase of cases) {
+    let tokenReads = 0;
+    let deleteCalls = 0;
+    let updateCalls = 0;
+    const gateway = mutationGateway({
+      deleteProfileImage: async token => {
+        deleteCalls++;
+        assert.equal(token, 'delete-token');
+        return testCase.deleteBehavior(token);
+      },
+      updateProfile: async () => { updateCalls++; return { ok: true }; },
+    });
+
+    assert.deepEqual(
+      await createSavePersonalInfo(
+        gateway,
+        async () => ['primary-token', testCase.secondToken][tokenReads++],
+      )(
+        { ...baseSaveInput, imageChange: { kind: 'delete' } },
+        () => { throw new Error('must not observe upload failure'); },
+      ),
+      testCase.expected,
+    );
+    assert.equal(tokenReads, 2);
+    assert.equal(deleteCalls, testCase.secondToken ? 1 : 0);
+    assert.equal(updateCalls, 0);
+  }
+
+  let updateCalls = 0;
+  const gateway = mutationGateway({
+    deleteProfileImage: async () => { throw thrownFailure; },
+    updateProfile: async () => { updateCalls++; return { ok: true }; },
+  });
+  let tokenReads = 0;
+  await assert.rejects(
+    createSavePersonalInfo(
+      gateway,
+      async () => ['primary-token', 'delete-token'][tokenReads++],
+    )(
+      { ...baseSaveInput, imageChange: { kind: 'delete' } },
+      () => { throw new Error('must not observe upload failure'); },
+    ),
+    caught => caught === thrownFailure,
+  );
+  assert.equal(tokenReads, 2);
+  assert.equal(updateCalls, 0);
+});
+
+test('update rejection remains distinguishable and thrown update failure propagates without retry', async () => {
+  let updateCalls = 0;
+  const rejectedGateway = mutationGateway({
+    updateProfile: async () => {
+      updateCalls++;
+      return { ok: false, backendMessage: 'backend message' };
+    },
+  });
+
+  assert.deepEqual(
+    await createSavePersonalInfo(
+      rejectedGateway,
+      async () => 'primary-token',
+    )(baseSaveInput, () => { throw new Error('must not observe upload failure'); }),
+    { status: 'update-rejected', backendMessage: 'backend message' },
+  );
+  assert.equal(updateCalls, 1);
+
+  const failure = new Error('update network failure');
+  updateCalls = 0;
+  const thrownGateway = mutationGateway({
+    updateProfile: async () => { updateCalls++; throw failure; },
+  });
+  await assert.rejects(
+    createSavePersonalInfo(
+      thrownGateway,
+      async () => 'primary-token',
+    )(baseSaveInput, () => { throw new Error('must not observe upload failure'); }),
+    caught => caught === failure,
+  );
+  assert.equal(updateCalls, 1);
 });

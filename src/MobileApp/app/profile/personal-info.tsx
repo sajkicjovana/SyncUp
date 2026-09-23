@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
-import { apiCall } from '../../config';
 import {
   View,
   Text,
@@ -11,12 +10,11 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
-import { loadPersonalInfo } from '../../src/di/profile';
+import { loadPersonalInfo, savePersonalInfo } from '../../src/di/profile';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -101,100 +99,55 @@ export default function PersonalInfoScreen() {
     );
   };
 
-const uploadProfileImage = async (): Promise<string | null> => {
-  if (!newProfileImage) return profilePicture;
-  try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error(t('personalInfo.notLoggedIn'));
-
-    const formData = new FormData();
-    // @ts-ignore
-    formData.append('Image', {
-      uri: newProfileImage.uri,
-      name: 'profile.jpg',
-      type: 'image/jpeg',
-    });
-
-
-    const res = await fetch(`${API_URL}/api/MobileUser/profile-image`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err);
-    }
-
-    const data = await res.json();
-   return normalizeImageUrl(data.imageUrl || null);
-  } catch (error) {
-    console.error('Upload error:', error);
-    return null;
-  }
-};
-
-  const deleteProfileImageOnServer = async () => {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error(t('personalInfo.notLoggedIn'));
-
-    const res = await apiCall(`${API_URL}/api/MobileUser/delete-profile-picture`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err || t('personalInfo.deleteFailed'));
-    }
-  };
-
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
+      const imageChange = newProfileImage
+        ? { kind: 'upload' as const, uri: newProfileImage.uri }
+        : profilePicture === ''
+          ? { kind: 'delete' as const }
+          : { kind: 'keep' as const, profilePicture };
+
+      const result = await savePersonalInfo(
+        {
+          firstName,
+          lastName,
+          email,
+          phoneNumber,
+          imageChange,
+        },
+        failure => {
+          const error = failure.kind === 'missing-token'
+            ? new Error(t('personalInfo.notLoggedIn'))
+            : failure.error;
+          console.error('Upload error:', error);
+        },
+      );
+
+      if (result.status === 'missing-token') {
         Alert.alert(t('personalInfo.error'), t('personalInfo.notLoggedIn'));
         setIsLoading(false);
         return;
       }
 
-      let uploadedImageUrl: string | null = profilePicture;
-
-      if (newProfileImage) {
-        uploadedImageUrl = await uploadProfileImage();
-      } else if (profilePicture === '') {
-        await deleteProfileImageOnServer();
-        uploadedImageUrl = '';
+      if (result.status === 'delete-missing-token') {
+        throw new Error(t('personalInfo.notLoggedIn'));
       }
 
-      const res = await apiCall(`${API_URL}/api/MobileUser/profileUpdate`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          phoneNumber,
-          profilePicture: uploadedImageUrl,
-        }),
-      });
-
-      if (res.ok) {
-        Alert.alert(t('personalInfo.success'), t('personalInfo.updated'));
-        setNewProfileImage(null);
-        setProfilePicture(uploadedImageUrl ?? '');
-        router.push('../(tabs)/profile');
-      } else {
-        const err = await res.json();
-        throw new Error(err.message || t('personalInfo.updateFailed'));
+      if (result.status === 'delete-rejected') {
+        throw new Error(result.responseText || t('personalInfo.deleteFailed'));
       }
+
+      if (result.status === 'update-rejected') {
+        throw new Error(
+          (result.backendMessage as string) || t('personalInfo.updateFailed'),
+        );
+      }
+
+      Alert.alert(t('personalInfo.success'), t('personalInfo.updated'));
+      setNewProfileImage(null);
+      setProfilePicture(result.profilePicture ?? '');
+      router.push('../(tabs)/profile');
     } catch (error: any) {
       Alert.alert(t('personalInfo.error'), error.message);
     } finally {

@@ -5,8 +5,12 @@ import type {
   LoadPersonalInfoResult,
   LoadProfileDashboardResult,
   ObserveProfileDashboard,
+  ObservePersonalInfoUploadFailure,
+  PersonalInfoMutationGateway,
   ProfileDashboardGateway,
   ReadProfileToken,
+  SavePersonalInfoInput,
+  SavePersonalInfoResult,
 } from './ports';
 
 export class ProfileDashboardTokenReadError extends Error {
@@ -33,6 +37,78 @@ export function createLoadPersonalInfo(
     }
 
     return { status: 'loaded', profile: result.profile };
+  };
+}
+
+export function createSavePersonalInfo(
+  mutationGateway: PersonalInfoMutationGateway,
+  readToken: ReadProfileToken,
+) {
+  return async (
+    input: SavePersonalInfoInput,
+    observeUploadFailure: ObservePersonalInfoUploadFailure,
+  ): Promise<SavePersonalInfoResult> => {
+    const primaryToken = await readToken();
+    if (!primaryToken) return { status: 'missing-token' };
+
+    let profilePicture: string | null;
+
+    if (input.imageChange.kind === 'upload') {
+      profilePicture = null;
+
+      try {
+        const uploadToken = await readToken();
+        if (!uploadToken) {
+          observeUploadFailure({ kind: 'missing-token' });
+        } else {
+          const uploadResult = await mutationGateway.uploadProfileImage(
+            uploadToken,
+            input.imageChange.uri,
+          );
+          if (uploadResult.ok) {
+            profilePicture = uploadResult.imageUrl;
+          } else {
+            observeUploadFailure({
+              kind: 'error',
+              error: new Error(uploadResult.responseText),
+            });
+          }
+        }
+      } catch (error) {
+        observeUploadFailure({ kind: 'error', error });
+      }
+    } else if (input.imageChange.kind === 'delete') {
+      const deleteToken = await readToken();
+      if (!deleteToken) return { status: 'delete-missing-token' };
+
+      const deleteResult = await mutationGateway.deleteProfileImage(deleteToken);
+      if (!deleteResult.ok) {
+        return {
+          status: 'delete-rejected',
+          responseText: deleteResult.responseText,
+        };
+      }
+      profilePicture = '';
+    } else {
+      profilePicture = input.imageChange.profilePicture;
+    }
+
+    const updateResult = await mutationGateway.updateProfile(primaryToken, {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phoneNumber: input.phoneNumber,
+      profilePicture,
+    });
+
+    if (!updateResult.ok) {
+      return {
+        status: 'update-rejected',
+        backendMessage: updateResult.backendMessage,
+      };
+    }
+
+    return { status: 'saved', profilePicture };
   };
 }
 

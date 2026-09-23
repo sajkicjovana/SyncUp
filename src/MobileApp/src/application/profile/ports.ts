@@ -48,3 +48,60 @@ export type LoadPersonalInfoResult =
   | { status: 'missing-token' }
   | { status: 'non-ok'; responseStatus: number }
   | { status: 'loaded'; profile: CurrentProfile };
+
+export type PersonalInfoImageChange =
+  | { kind: 'keep'; profilePicture: string | null }
+  | { kind: 'upload'; uri: string }
+  | { kind: 'delete' };
+
+export type SavePersonalInfoInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  imageChange: PersonalInfoImageChange;
+};
+
+export type UpdatePersonalInfoInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  profilePicture: string | null;
+};
+
+export type UpdatePersonalInfoResult =
+  | { ok: true }
+  | { ok: false; backendMessage: unknown };
+
+export type UploadProfileImageResult =
+  | { ok: true; imageUrl: string | null }
+  | { ok: false; responseText: string };
+
+export type DeleteProfileImageResult =
+  | { ok: true }
+  | { ok: false; responseText: string };
+
+export interface PersonalInfoMutationGateway {
+  updateProfile(
+    token: string,
+    profile: UpdatePersonalInfoInput,
+  ): Promise<UpdatePersonalInfoResult>;
+  uploadProfileImage(token: string, uri: string): Promise<UploadProfileImageResult>;
+  deleteProfileImage(token: string): Promise<DeleteProfileImageResult>;
+}
+
+export type PersonalInfoUploadFailure =
+  | { kind: 'missing-token' }
+  | { kind: 'error'; error: unknown };
+
+export type ObservePersonalInfoUploadFailure = (
+  failure: PersonalInfoUploadFailure,
+) => void;
+
+export type SavePersonalInfoResult =
+  | { status: 'missing-token' }
+  | { status: 'delete-missing-token' }
+  | { status: 'delete-rejected'; responseText: string }
+  | { status: 'update-rejected'; backendMessage: unknown }
+  | { status: 'saved'; profilePicture: string | null };
