@@ -113,14 +113,23 @@ function buildLeafletHtml(payload: {
 
 
 export default function EventDetailScreen() {
-  const { id, from, favoritesFrom: rawFavoritesFrom } = useLocalSearchParams<{
+  const {
+    id,
+    from,
+    favoritesFrom: rawFavoritesFrom,
+    searchReturnKey: rawSearchReturnKey,
+  } = useLocalSearchParams<{
     id?: string | string[];
     from?: string | string[];
     favoritesFrom?: string | string[];
+    searchReturnKey?: string | string[];
   }>();
   const favoritesFrom = Array.isArray(rawFavoritesFrom)
     ? rawFavoritesFrom[0]
     : rawFavoritesFrom;
+  const searchReturnKey = Array.isArray(rawSearchReturnKey)
+    ? rawSearchReturnKey[0]
+    : rawSearchReturnKey;
   const router = useRouter();
   const { i18n, t } = useTranslation();
 
@@ -136,7 +145,11 @@ export default function EventDetailScreen() {
       return true;
     }
     if (from === 'search') {
-      router.dismissTo('/(tabs)/search');
+      router.dismissTo(
+        searchReturnKey
+          ? { pathname: '/(tabs)/search', params: { searchReturnKey } }
+          : '/(tabs)/search'
+      );
       return true;
     }
     if (from === 'events') {
@@ -144,7 +157,7 @@ export default function EventDetailScreen() {
       return true;
     }
     return false;
-  }, [favoritesFrom, from, router]);
+  }, [favoritesFrom, from, router, searchReturnKey]);
 
   useFocusEffect(
     useCallback(() => {

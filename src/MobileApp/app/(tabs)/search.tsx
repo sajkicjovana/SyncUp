@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../../config';
 import { apiCall } from '../../config';
@@ -19,7 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { API_URL as BASE_URL } from '../../config';
 import { AntDesign } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
@@ -28,6 +28,12 @@ import { searchUseCases } from '../../src/di/search';
 import { readAuthToken } from '../../src/di/auth';
 import { selectFreeSearchEvents } from '../../src/domain/search';
 import type { SearchEvent as EventType, SearchPrices } from '../../src/domain/search';
+import {
+  captureSearchReturnState,
+  clearSearchReturnState,
+  consumeSearchReturnState,
+  type SearchReturnSnapshot,
+} from '../../src/presentation/search/searchReturnState';
 const DETAILS_API_URL = `${BASE_URL}/api/Events/Details`;
 
 interface LocationType {
@@ -37,24 +43,40 @@ interface LocationType {
 
 const SearchScreen = () => {
   const router = useRouter();
+  const { searchReturnKey: rawSearchReturnKey } = useLocalSearchParams<{
+    searchReturnKey?: string | string[];
+  }>();
+  const searchReturnKey = Array.isArray(rawSearchReturnKey)
+    ? rawSearchReturnKey[0]
+    : rawSearchReturnKey;
+  const restoredSnapshotRef = useRef<SearchReturnSnapshot | null | undefined>(undefined);
+  if (restoredSnapshotRef.current === undefined) {
+    restoredSnapshotRef.current = consumeSearchReturnState(searchReturnKey);
+    if (!restoredSnapshotRef.current) clearSearchReturnState();
+  }
+  const restoredSnapshot = restoredSnapshotRef.current;
+  const skipInitialSearchFetch = useRef(Boolean(restoredSnapshot));
+  const skipInitialLocationsFetch = useRef(Boolean(restoredSnapshot));
   const { favorites, toggleFavorite } = useFavorites();
   const { t } = useTranslation();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [events, setEvents] = useState<EventType[]>([]);
+  const [searchQuery, setSearchQuery] = useState(restoredSnapshot?.searchQuery ?? '');
+  const [events, setEvents] = useState<EventType[]>(restoredSnapshot?.events ?? []);
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState<{ [key: number]: boolean }>({});
   
 
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(restoredSnapshot?.startDate ?? null);
+  const [endDate, setEndDate] = useState<Date | null>(restoredSnapshot?.endDate ?? null);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-  const [isFree, setIsFree] = useState(false);
+  const [isFree, setIsFree] = useState(restoredSnapshot?.isFree ?? false);
   
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    restoredSnapshot?.selectedCategory ?? null,
+  );
 
     const categoryOptions = [
     { label: t('category.music'), value: 'Music' },
@@ -69,16 +91,25 @@ const SearchScreen = () => {
 
 
 
-  const [locations, setLocations] = useState<LocationType[]>([]);
+  const [locations, setLocations] = useState<LocationType[]>(restoredSnapshot?.locations ?? []);
   const [locationOpen, setLocationOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(
+    restoredSnapshot?.selectedLocation ?? null,
+  );
 
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<string>('popularity');
+  const [sortBy, setSortBy] = useState<string>(restoredSnapshot?.sortBy ?? 'popularity');
 
 
   // Mapa za cene: eventId -> { minPrice, maxPrice }
-  const [eventPrices, setEventPrices] = useState<SearchPrices>({});
+  const [eventPrices, setEventPrices] = useState<SearchPrices>(restoredSnapshot?.eventPrices ?? {});
+
+  useEffect(() => {
+    if (searchReturnKey) {
+      consumeSearchReturnState(searchReturnKey);
+      router.setParams({ searchReturnKey: undefined });
+    }
+  }, [router, searchReturnKey]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -150,10 +181,18 @@ const fetchEvents = useCallback(async () => {
 
 
 useEffect(() => {
+  if (skipInitialSearchFetch.current) {
+    skipInitialSearchFetch.current = false;
+    return;
+  }
   fetchEvents();
 }, [fetchEvents]);
 
 useEffect(() => {
+  if (skipInitialLocationsFetch.current) {
+    skipInitialLocationsFetch.current = false;
+    return;
+  }
   fetchLocations();
 }, []);
 
@@ -190,7 +229,22 @@ useEffect(() => {
       <TouchableOpacity
         style={styles.eventItem}
         onPress={() => {
-          router.push({ pathname: '/event/[id]', params: { id: String(item.id), from: 'search' } });
+          const searchReturnKey = captureSearchReturnState({
+            searchQuery,
+            selectedLocation,
+            selectedCategory,
+            startDate,
+            endDate,
+            isFree,
+            sortBy,
+            events,
+            eventPrices,
+            locations,
+          });
+          router.push({
+            pathname: '/event/[id]',
+            params: { id: String(item.id), from: 'search', searchReturnKey },
+          });
         }}
       >
         <View style={{ position: 'relative' }}>
