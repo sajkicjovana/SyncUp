@@ -14,6 +14,8 @@ import * as Animatable from 'react-native-animatable';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { purchaseCredits } from '../../src/di/profile';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { theme } from '../../constants/theme';
 
 export default function TokenPurchaseScreen() {
   const [amount, setAmount] = useState('');
@@ -21,6 +23,7 @@ export default function TokenPurchaseScreen() {
   const [processing, setProcessing] = useState(false);
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const handlePurchase = async () => {
   const parsedAmount = parseInt(amount, 10);
   if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -59,14 +62,17 @@ export default function TokenPurchaseScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => router.push('../(tabs)/profile')}>
-        <Ionicons name="arrow-back" size={28} color="#333" />
+        <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
       </TouchableOpacity>
 
-      <Text style={styles.title}>{t('payment.header')}</Text>
+      <Text style={styles.title}>{t('payment.header').replace('💸', '').trim()}</Text>
 
-      <Text style={styles.label}>{t('payment.msg')}</Text>
+      <View style={styles.sectionHeading}>
+        <Ionicons name="wallet-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.label}>{t('payment.msg')}</Text>
+      </View>
       <TextInput
         style={styles.input}
         keyboardType="numeric"
@@ -82,7 +88,7 @@ export default function TokenPurchaseScreen() {
           iterationCount="infinite"
           style={styles.cardAnimation}
         >
-          <Ionicons name="card-outline" size={60} color="#0066cc" />
+          <Ionicons name="card-outline" size={60} color={theme.colors.primary} />
           <Text style={styles.processingText}>{t('payment.process')}</Text>
         </Animatable.View>
       )}
@@ -101,47 +107,55 @@ export default function TokenPurchaseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fdfdfd',
-    padding: 20,
-    justifyContent: 'center',
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 30,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: theme.spacing.xl,
     textAlign: 'center',
-    color: '#1e1e1e',
+    color: theme.colors.textPrimary,
+  },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   label: {
-    fontSize: 18,
-    color: '#444',
-    marginBottom: 10,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#aaa',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 20,
-    fontSize: 18,
-    backgroundColor: '#fff',
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radii.control,
+    marginBottom: theme.spacing.lg,
+    height: 48,
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.surface,
   },
   btn: {
-    backgroundColor: '#0066cc',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    borderRadius: theme.radii.control,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: theme.spacing.lg,
   },
   btnText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '700',
   },
   backBtn: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 10,
+    alignSelf: 'flex-start',
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   cardAnimation: {
     alignItems: 'center',
@@ -149,7 +163,7 @@ const styles = StyleSheet.create({
   },
   processingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 10,
   },
 });

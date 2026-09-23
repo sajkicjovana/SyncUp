@@ -13,10 +13,13 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { theme } from '../../constants/theme';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -110,10 +113,10 @@ const handleChangePassword = async () => {
 
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 10 }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('../(tabs)/profile')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.titleWrapper}>
           <Text style={styles.title}>{t('changePassword.title')}</Text>
@@ -129,7 +132,7 @@ const handleChangePassword = async () => {
           secureTextEntry={!showCurrent}
         />
         <TouchableOpacity onPress={() => setShowCurrent(!showCurrent)}>
-          <Ionicons name={showCurrent ? 'eye-off' : 'eye'} size={22} color="#888" />
+          <Ionicons name={showCurrent ? 'eye-off-outline' : 'eye-outline'} size={22} color={theme.colors.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -142,7 +145,7 @@ const handleChangePassword = async () => {
           secureTextEntry={!showNew}
         />
         <TouchableOpacity onPress={() => setShowNew(!showNew)}>
-          <Ionicons name={showNew ? 'eye-off' : 'eye'} size={22} color="#888" />
+          <Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={22} color={theme.colors.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -155,74 +158,77 @@ const handleChangePassword = async () => {
           secureTextEntry={!showConfirm}
         />
         <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-          <Ionicons name={showConfirm ? 'eye-off' : 'eye'} size={22} color="#888" />
+          <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={22} color={theme.colors.textMuted} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleChangePassword}>
         <Text style={styles.saveText}>{t('changePassword.saveChanges')}</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 60,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
+    paddingBottom: theme.spacing.xxl,
     flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: theme.spacing.xl,
   },
   backButton: {
-    paddingRight: 10,
+    paddingVertical: theme.spacing.sm,
+    paddingRight: theme.spacing.md,
   },
   titleWrapper: {
     flex: 1,
     alignItems: 'center',
-    marginRight: 34,
+    marginRight: 36,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
+    color: theme.colors.textPrimary,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 16,
+    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    color: theme.colors.textPrimary,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.control,
+    paddingHorizontal: theme.spacing.md,
     height: 48,
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
   },
   passwordInput: {
     flex: 1,
     fontSize: 16,
-    color: '#111827', 
+    color: theme.colors.textPrimary,
   },
   saveButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: theme.radii.control,
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: theme.spacing.xl,
   },
   saveText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
 });
-
