@@ -12,14 +12,17 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadMyTickets } from '../../src/di/myTickets';
 import { MyTicketsTokenReadError } from '../../src/application/myTickets/useCases';
 import type { GroupedMyTicket } from '../../src/application/myTickets/ports';
+import { theme } from '../../constants/theme';
 
 export default function ProfileTickets() {
   const [groupedTickets, setGroupedTickets] = useState<GroupedMyTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const { t } = useTranslation();
@@ -89,37 +92,44 @@ export default function ProfileTickets() {
         });
       }}
     >
-      <Text style={styles.title}>{item.eventName}</Text>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('profileTickets.ticketType') || 'Ticket Type'}:</Text>
-        <Text style={styles.value}>{item.ticketType}</Text>
+      <View style={styles.accent}>
+        <Ionicons name="ticket-outline" size={22} color={theme.colors.primary} />
       </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('profileTickets.quantity')}:</Text>
-        <Text style={styles.value}>{item.quantity}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('profileTickets.price')}:</Text>
-        <Text style={styles.value}>{item.price} RSD</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('profileTickets.purchasedOn')}:</Text>
-        <Text style={styles.value}>
-          {new Date(item.purchasedAt[item.purchasedAt.length - 1]).toLocaleString()}
-        </Text>
+      <View style={styles.ticketContent}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{item.eventName}</Text>
+          <Ionicons name="chevron-forward" size={22} color={theme.colors.textMuted} />
+        </View>
+        <Text style={styles.ticketType}>{item.ticketType}</Text>
+        <View style={styles.metadata}>
+          <View style={styles.metadataItem}>
+            <Text style={styles.label}>{t('profileTickets.quantity')}</Text>
+            <Text style={styles.value}>{item.quantity}</Text>
+          </View>
+          <View style={styles.metadataItem}>
+            <Text style={styles.label}>{t('profileTickets.price')}</Text>
+            <Text style={styles.value}>{item.price} RSD</Text>
+          </View>
+        </View>
+        <View style={styles.purchaseDate}>
+          <Ionicons name="calendar-outline" size={16} color={theme.colors.textMuted} />
+          <Text style={styles.dateText}>
+            {new Date(item.purchasedAt[item.purchasedAt.length - 1]).toLocaleString()}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { paddingTop: insets.top + theme.spacing.sm }]}>
         <TouchableOpacity
           onPress={handleBack}
           style={styles.backButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={28} color='black' />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.header}>{t('profileTickets.title') || 'My Tickets'}</Text>
       </View>
@@ -152,15 +162,22 @@ export default function ProfileTickets() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 35, paddingBottom: 12 },
-  backButton: { marginRight: 12, padding: 6, borderRadius: 8 },
-  header: { fontSize: 28, fontWeight: 'bold', color: '#2c3e50', flex: 1, textAlign: 'center', marginRight: 40 },
-  ticketItem: { backgroundColor: '#fefefe', padding: 20, borderRadius: 14, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4, borderWidth: 1, borderColor: '#e1e4e8' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 10, color: '#34495e' },
-  row: { flexDirection: 'row', marginBottom: 6, alignItems: 'center' },
-  label: { fontWeight: '600', color: '#7f8c8d', width: 110 },
-  value: { fontWeight: '400', color: '#34495e', flexShrink: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: '#fff' },
-  emptyText: { fontSize: 18, color: '#95a5a6', textAlign: 'center' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.lg },
+  backButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  header: { fontSize: 24, fontWeight: '700', color: theme.colors.textPrimary, flex: 1, textAlign: 'center', marginRight: 44 },
+  ticketItem: { flexDirection: 'row', backgroundColor: theme.colors.surface, padding: theme.spacing.lg, borderRadius: theme.radii.card, marginBottom: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, shadowColor: theme.shadow.color, shadowOpacity: theme.shadow.opacity, shadowOffset: theme.shadow.offset, shadowRadius: theme.shadow.radius, elevation: theme.shadow.elevation },
+  accent: { width: 40, height: 40, borderRadius: theme.radii.control, backgroundColor: theme.colors.primarySoft, justifyContent: 'center', alignItems: 'center', marginRight: theme.spacing.md },
+  ticketContent: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', color: theme.colors.textPrimary, marginRight: theme.spacing.sm },
+  ticketType: { fontSize: 14, color: theme.colors.textSecondary, marginTop: 3 },
+  metadata: { flexDirection: 'row', gap: theme.spacing.xl, marginTop: theme.spacing.md },
+  metadataItem: { gap: 2 },
+  label: { fontSize: 12, color: theme.colors.textMuted },
+  value: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
+  purchaseDate: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.md },
+  dateText: { fontSize: 12, color: theme.colors.textSecondary },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing.lg, backgroundColor: theme.colors.background },
+  emptyText: { fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center' },
 });

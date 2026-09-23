@@ -15,8 +15,10 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadPersonalInfo } from '../../src/di/profile';
 import { buildTicketValidationUrl } from '../../src/di/ticketDetails';
+import { theme } from '../../constants/theme';
 
 type TicketType = {
   id: number;
@@ -27,7 +29,9 @@ type TicketType = {
 export default function TicketDetails() {
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { ticketIDs, validationTokens, eventName, eventID, purchasedAt, ticketTypes, from } = useLocalSearchParams();
+  const { ticketType } = useLocalSearchParams<{ ticketType?: string | string[] }>();
 
 
   const [fullName, setFullName] = useState<string | null>(null);
@@ -154,38 +158,22 @@ if (purchasedAt) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0047FF" />
-        <Text style={{ marginTop: 10 }}>{t('loading')}</Text>
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>🎟️ {t('ticketDetails.title')}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + theme.spacing.sm }}>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.header}>{t('ticketDetails.title')}</Text>
+      </View>
 
-      <TouchableOpacity
-        onPress={() =>
-          router.push({
-            pathname: `../event/${eventID}`,
-            params: { from: 'ticketDetails' },
-          })
-        }
-      >
-        <Text style={styles.eventName}>{displayEventName}</Text>
-      </TouchableOpacity>
-
-
-
-      <Text style={[styles.detail, { marginBottom: 16 }]}>
-        {t('ticketDetails.purchasedBy')}:{' '}
-        <Text style={{ fontWeight: '600' }}>
-          {fullName ?? t('ticketDetails.unknownUser')}
-        </Text>
-      </Text>
-
-      {/* QR kodovi */}
     {ids.map((id, index) => {
       const token = tokens[index];
       const purchaseDate = purchasedDates[index]
@@ -196,9 +184,19 @@ if (purchasedAt) {
 
       return (
         <View key={index} style={styles.ticketCard}>
-          <Text style={styles.ticketLabel}>
-            🎫 {t('ticketDetails.ticket')} #{index + 1}
-          </Text>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: `../event/${eventID}`,
+                params: { from: 'ticketDetails' },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <Text style={styles.eventName}>{displayEventName}</Text>
+          </TouchableOpacity>
+          <Text style={styles.ticketLabel}>{ticketType || parsedTicketTypes[index]?.name || t('ticketDetails.ticket')} </Text>
+          <Text style={styles.ticketNumber}>{t('ticketDetails.ticket')} #{index + 1}</Text>
 
           {token ? (
             <QRCode
@@ -216,20 +214,20 @@ if (purchasedAt) {
             <Text style={styles.detail}>
               {t('ticketDetails.purchasedAt')}: {purchaseDate}
             </Text>
-            {!loading && (
-              <Text style={styles.detail}>
-                {t('ticketDetails.purchasedBy')}: <Text style={{ fontWeight: '600' }}>{fullName ?? t('ticketDetails.unknownUser')}</Text>
-              </Text>
-            )}
+            <Text style={styles.detail}>
+              {t('ticketDetails.purchasedBy')}: <Text style={styles.detailValue}>{fullName ?? t('ticketDetails.unknownUser')}</Text>
+            </Text>
           </View>
 
           <View style={styles.actions}>
             <TouchableOpacity onPress={() => downloadQR(index)} style={styles.button}>
-              <Text style={styles.buttonText}>📥 {t('buttons.download')}</Text>
+              <Ionicons name="download-outline" size={18} color={theme.colors.surface} />
+              <Text style={styles.buttonText}>{t('buttons.download')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => shareQR(index)} style={styles.buttonSecondary}>
-              <Text style={styles.buttonText}>📤 {t('buttons.share')}</Text>
+              <Ionicons name="share-outline" size={18} color={theme.colors.textPrimary} />
+              <Text style={styles.buttonSecondaryText}>{t('buttons.share')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -258,124 +256,44 @@ if (purchasedAt) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 35,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
   },
-  header: {
-    fontSize: 30,
-    fontWeight: '800',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#1e1e1e',
-  },
-  actions: {
-  flexDirection: 'row',
-  marginTop: 22,
-  justifyContent: 'space-between',
-  width: '100%',
-},
-button: {
-  flex: 1,
-  backgroundColor: '#5C5EE0',
-  paddingVertical: 12,
-  borderRadius: 10,
-  marginHorizontal: 5,
-  alignItems: 'center',
-  shadowColor: '#5c5ee0',
-  shadowOpacity: 0.35,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 3 },
-  maxWidth: 160, 
-},
-buttonSecondary: {
-  flex: 1,
-  backgroundColor: '#6B7280',
-  paddingVertical: 12,
-  borderRadius: 10,
-  marginHorizontal: 5,
-  alignItems: 'center',
-  maxWidth: 160,
-},
-buttonText: {
-  color: '#fff',
-  fontWeight: '700',
-  fontSize: 16,
-  textAlign: 'center',
-},
-
-  eventName: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginVertical: 10,
-    color: '#3478f6',
-  },
+  headerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.lg },
+  backButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  header: { flex: 1, fontSize: 24, fontWeight: '700', textAlign: 'center', color: theme.colors.textPrimary, marginRight: 44 },
+  eventName: { fontSize: 18, fontWeight: '700', textAlign: 'center', color: theme.colors.textPrimary, marginBottom: theme.spacing.sm },
+  actions: { flexDirection: 'row', marginTop: theme.spacing.lg, gap: theme.spacing.sm, width: '100%' },
+  button: { flex: 1, flexDirection: 'row', gap: theme.spacing.sm, backgroundColor: theme.colors.primary, paddingVertical: theme.spacing.md, borderRadius: theme.radii.control, alignItems: 'center', justifyContent: 'center' },
+  buttonSecondary: { flex: 1, flexDirection: 'row', gap: theme.spacing.sm, backgroundColor: theme.colors.primarySoft, paddingVertical: theme.spacing.md, borderRadius: theme.radii.control, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: theme.colors.surface, fontWeight: '700', fontSize: 14 },
+  buttonSecondaryText: { color: theme.colors.textPrimary, fontWeight: '700', fontSize: 14 },
   detail: {
-    fontSize: 16,
-    marginBottom: 6,
-    textAlign: 'left',
-    color: '#444',
+    fontSize: 14,
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.textSecondary,
   },
-  ticketCard: {
-    backgroundColor: '#fafafa',
-    borderRadius: 18,
-    paddingVertical: 24,
-    paddingHorizontal: 28,
-    marginTop: 28,
-    marginBottom: 36,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-    alignItems: 'center',
-  },
-  ticketLabel: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 22, 
-    color: '#333',
-    textAlign: 'center',
-    width: '100%',
-  },
+  detailValue: { fontWeight: '600', color: theme.colors.textPrimary },
+  ticketCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radii.card, padding: theme.spacing.lg, marginBottom: theme.spacing.lg, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', shadowColor: theme.shadow.color, shadowOpacity: theme.shadow.opacity, shadowOffset: theme.shadow.offset, shadowRadius: theme.shadow.radius, elevation: theme.shadow.elevation },
+  ticketLabel: { fontSize: 16, fontWeight: '700', marginBottom: theme.spacing.xs, color: theme.colors.primaryDark, textAlign: 'center' },
+  ticketNumber: { fontSize: 12, color: theme.colors.textMuted, marginBottom: theme.spacing.lg },
   backToEventsButton: {
-    backgroundColor: '#1A56DB',
-    paddingVertical: 16,
-    paddingHorizontal: 26,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.radii.control,
     alignItems: 'center',
-    marginBottom: 50,
-    marginTop: 12,
-    shadowColor: '#1a56db',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
+    marginBottom: theme.spacing.xxl,
+    marginTop: theme.spacing.sm,
   },
-  backToEventsText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailText: {
-    fontSize: 16,
-    marginBottom: 16,
-    color: '#555',
-  },
-    cardDetails: {
-    marginTop: 14,
+  backToEventsText: { color: theme.colors.surface, fontSize: 15, fontWeight: '700' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
+  loadingText: { marginTop: theme.spacing.sm, color: theme.colors.textSecondary },
+  cardDetails: {
+    marginTop: theme.spacing.lg,
     alignSelf: 'stretch',
     width: '100%',
-    paddingLeft: 8,
+    paddingHorizontal: theme.spacing.sm,
   },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginTop: 20,
-    fontWeight: '600',
-  },
+  errorText: { color: '#B42318', textAlign: 'center', marginTop: theme.spacing.lg, fontWeight: '600' },
 });
