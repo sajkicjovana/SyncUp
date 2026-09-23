@@ -1,6 +1,8 @@
 import type { MyTicketsGateway } from '../myTickets/ports';
 import type { ReservationRow, ReservationsGateway } from '../reservations/ports';
 import type {
+  CurrentProfileGateway,
+  LoadPersonalInfoResult,
   LoadProfileDashboardResult,
   ObserveProfileDashboard,
   ProfileDashboardGateway,
@@ -15,6 +17,23 @@ export class ProfileDashboardTokenReadError extends Error {
     this.name = 'ProfileDashboardTokenReadError';
     this.originalError = error;
   }
+}
+
+export function createLoadPersonalInfo(
+  profileGateway: CurrentProfileGateway,
+  readToken: ReadProfileToken,
+) {
+  return async (): Promise<LoadPersonalInfoResult> => {
+    const token = await readToken();
+    if (!token) return { status: 'missing-token' };
+
+    const result = await profileGateway.loadCurrentProfile(token);
+    if (!result.ok) {
+      return { status: 'non-ok', responseStatus: result.status };
+    }
+
+    return { status: 'loaded', profile: result.profile };
+  };
 }
 
 function countUniqueResourceAllocations(rows: ReservationRow[]): number {
@@ -49,7 +68,12 @@ export function createLoadProfileDashboard(
 
     const profileResult = await profileGateway.loadCurrentProfile(token);
     if (profileResult.ok) {
-      observe({ stage: 'profile', outcome: 'loaded', profile: profileResult.profile });
+      const { firstName, lastName, email, profilePicture } = profileResult.profile;
+      observe({
+        stage: 'profile',
+        outcome: 'loaded',
+        profile: { firstName, lastName, email, profilePicture },
+      });
     } else {
       observe({ stage: 'profile', outcome: 'non-ok', status: profileResult.status });
     }

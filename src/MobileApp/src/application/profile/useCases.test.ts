@@ -3,10 +3,12 @@ import { test } from 'node:test';
 import type { MyTicketRow, MyTicketsGateway } from '../myTickets/ports';
 import type { ReservationRow, ReservationsGateway } from '../reservations/ports';
 import type {
+  CurrentProfileGateway,
   ProfileDashboardGateway,
   ProfileDashboardUpdate,
 } from './ports';
 import {
+  createLoadPersonalInfo,
   createLoadProfileDashboard,
   ProfileDashboardTokenReadError,
 } from './useCases';
@@ -15,7 +17,15 @@ const profile = {
   firstName: 'Ana',
   lastName: 'Anic',
   email: 'ana@example.test',
+  phoneNumber: '+381601234567',
   profilePicture: 'http://example.test/avatar.jpg',
+};
+
+const dashboardProfile = {
+  firstName: profile.firstName,
+  lastName: profile.lastName,
+  email: profile.email,
+  profilePicture: profile.profilePicture,
 };
 
 const ticket = (id: number): MyTicketRow => ({
@@ -154,7 +164,92 @@ test('emits successful semantic profile values unchanged', async () => {
     async () => 'token',
   )(update => updates.push(update));
 
-  assert.deepEqual(updates[1], { stage: 'profile', outcome: 'loaded', profile });
+  assert.deepEqual(updates[1], {
+    stage: 'profile',
+    outcome: 'loaded',
+    profile: dashboardProfile,
+  });
+});
+
+test('personal info reads one token and returns the complete semantic current profile', async () => {
+  let tokenReads = 0;
+  const receivedTokens: string[] = [];
+  const profileGateway: CurrentProfileGateway = {
+    async loadCurrentProfile(token) {
+      receivedTokens.push(token);
+      return { ok: true, profile };
+    },
+  };
+
+  assert.deepEqual(
+    await createLoadPersonalInfo(
+      profileGateway,
+      async () => { tokenReads++; return 'held-token'; },
+    )(),
+    { status: 'loaded', profile },
+  );
+  assert.equal(tokenReads, 1);
+  assert.deepEqual(receivedTokens, ['held-token']);
+});
+
+test('personal info missing and empty tokens perform no gateway call', async () => {
+  for (const missingToken of [null, '']) {
+    let tokenReads = 0;
+    let profileCalls = 0;
+    const profileGateway: CurrentProfileGateway = {
+      async loadCurrentProfile() {
+        profileCalls++;
+        return { ok: true, profile };
+      },
+    };
+
+    assert.deepEqual(
+      await createLoadPersonalInfo(
+        profileGateway,
+        async () => { tokenReads++; return missingToken; },
+      )(),
+      { status: 'missing-token' },
+    );
+    assert.equal(tokenReads, 1);
+    assert.equal(profileCalls, 0);
+  }
+});
+
+test('personal info keeps a non-OK profile response distinguishable', async () => {
+  const profileGateway: CurrentProfileGateway = {
+    async loadCurrentProfile() {
+      return { ok: false, status: 403 };
+    },
+  };
+
+  assert.deepEqual(
+    await createLoadPersonalInfo(profileGateway, async () => 'token')(),
+    { status: 'non-ok', responseStatus: 403 },
+  );
+});
+
+test('personal info propagates token-reader and gateway failures unchanged', async () => {
+  const tokenFailure = new Error('storage failed');
+  let gatewayCalls = 0;
+  const profileGateway: CurrentProfileGateway = {
+    async loadCurrentProfile() {
+      gatewayCalls++;
+      return { ok: true, profile };
+    },
+  };
+
+  await assert.rejects(
+    createLoadPersonalInfo(profileGateway, async () => { throw tokenFailure; })(),
+    caught => caught === tokenFailure,
+  );
+  assert.equal(gatewayCalls, 0);
+
+  const gatewayFailure = new Error('profile request failed');
+  profileGateway.loadCurrentProfile = async () => { throw gatewayFailure; };
+  await assert.rejects(
+    createLoadPersonalInfo(profileGateway, async () => 'token')(),
+    caught => caught === gatewayFailure,
+  );
 });
 
 test('ticket count is the raw mapped row count including duplicate rows', async () => {

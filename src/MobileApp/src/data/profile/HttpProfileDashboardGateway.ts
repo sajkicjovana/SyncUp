@@ -5,6 +5,7 @@ type ProfileDto = {
   firstName?: unknown;
   lastName?: unknown;
   email?: unknown;
+  phoneNumber?: unknown;
   profilePicture?: unknown;
 };
 
@@ -29,6 +30,7 @@ export const httpProfileDashboardGateway: ProfileDashboardGateway = {
         firstName: (data.firstName || '') as string,
         lastName: (data.lastName || '') as string,
         email: (data.email || '') as string,
+        phoneNumber: (data.phoneNumber || '') as string,
         profilePicture: normalizeImageUrl(data.profilePicture || null),
       },
     };

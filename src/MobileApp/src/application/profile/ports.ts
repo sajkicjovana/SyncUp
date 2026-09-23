@@ -1,20 +1,26 @@
-export type ProfileDashboardProfile = {
+export type CurrentProfile = {
   firstName: string;
   lastName: string;
   email: string;
+  phoneNumber: string;
   profilePicture: string | null;
 };
 
+export type ProfileDashboardProfile = Omit<CurrentProfile, 'phoneNumber'>;
+
 export type ProfileDashboardGatewayResult =
-  | { ok: true; profile: ProfileDashboardProfile }
+  | { ok: true; profile: CurrentProfile }
   | { ok: false; status: number };
 
 export type CreditsGatewayResult =
   | { ok: true; credits: unknown }
   | { ok: false; status: number; responseText: string };
 
-export interface ProfileDashboardGateway {
+export interface CurrentProfileGateway {
   loadCurrentProfile(token: string): Promise<ProfileDashboardGatewayResult>;
+}
+
+export interface ProfileDashboardGateway extends CurrentProfileGateway {
   loadCredits(token: string): Promise<CreditsGatewayResult>;
 }
 
@@ -37,3 +43,8 @@ export type ObserveProfileDashboard = (update: ProfileDashboardUpdate) => void;
 export type LoadProfileDashboardResult =
   | { status: 'missing-token' }
   | { status: 'loaded' };
+
+export type LoadPersonalInfoResult =
+  | { status: 'missing-token' }
+  | { status: 'non-ok'; responseStatus: number }
+  | { status: 'loaded'; profile: CurrentProfile };

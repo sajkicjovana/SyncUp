@@ -31,6 +31,7 @@ test('profile uses the exact implicit GET endpoint and bearer header and maps se
       firstName: 'Ana',
       lastName: 'Anic',
       email: 'ana@example.test',
+      phoneNumber: '+381601234567',
       profilePicture: '/uploads/avatar.jpg',
       ignored: 'value',
     }),
@@ -42,6 +43,7 @@ test('profile uses the exact implicit GET endpoint and bearer header and maps se
       firstName: 'Ana',
       lastName: 'Anic',
       email: 'ana@example.test',
+      phoneNumber: '+381601234567',
       profilePicture: `${API_URL}/uploads/avatar.jpg`,
     },
   });
@@ -56,23 +58,53 @@ test('profile uses the exact implicit GET endpoint and bearer header and maps se
 test('profile preserves value-or-empty fallbacks and image normalization semantics', async () => {
   const cases = [
     {
-      dto: { firstName: null, lastName: 0, email: false, profilePicture: null },
+      dto: {
+        firstName: null,
+        lastName: 0,
+        email: false,
+        phoneNumber: null,
+        profilePicture: null,
+      },
       expectedPicture: null,
     },
     {
-      dto: { firstName: '', lastName: '', email: '', profilePicture: '' },
+      dto: {
+        firstName: '',
+        lastName: '',
+        email: '',
+        phoneNumber: '',
+        profilePicture: '',
+      },
       expectedPicture: null,
     },
     {
-      dto: { firstName: 'A', lastName: 'B', email: 'C', profilePicture: 'images/a.jpg' },
+      dto: {
+        firstName: 'A',
+        lastName: 'B',
+        email: 'C',
+        phoneNumber: 'D',
+        profilePicture: 'images/a.jpg',
+      },
       expectedPicture: `${API_URL}/images/a.jpg`,
     },
     {
-      dto: { firstName: 'A', lastName: 'B', email: 'C', profilePicture: 'http://cdn.test/a.jpg' },
+      dto: {
+        firstName: 'A',
+        lastName: 'B',
+        email: 'C',
+        phoneNumber: 'D',
+        profilePicture: 'http://cdn.test/a.jpg',
+      },
       expectedPicture: 'http://cdn.test/a.jpg',
     },
     {
-      dto: { firstName: 'A', lastName: 'B', email: 'C', profilePicture: 'https://cdn.test/a.jpg' },
+      dto: {
+        firstName: 'A',
+        lastName: 'B',
+        email: 'C',
+        phoneNumber: 'D',
+        profilePicture: 'https://cdn.test/a.jpg',
+      },
       expectedPicture: 'https://cdn.test/a.jpg',
     },
   ];
@@ -85,6 +117,7 @@ test('profile preserves value-or-empty fallbacks and image normalization semanti
       assert.equal(result.profile.firstName, dto.firstName || '');
       assert.equal(result.profile.lastName, dto.lastName || '');
       assert.equal(result.profile.email, dto.email || '');
+      assert.equal(result.profile.phoneNumber, dto.phoneNumber || '');
       assert.equal(result.profile.profilePicture, expectedPicture);
     }
   }

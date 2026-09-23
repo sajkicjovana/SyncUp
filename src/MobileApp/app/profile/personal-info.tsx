@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
+import { loadPersonalInfo } from '../../src/di/profile';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -44,22 +45,14 @@ export default function PersonalInfoScreen() {
     const fetchUserInfo = async () => {
       setIsLoading(true);
       try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) return;
+        const result = await loadPersonalInfo();
+        if (result.status !== 'loaded' || !isMounted) return;
 
-        const res = await apiCall(`${API_URL}/api/MobileUser/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (!isMounted) return;
-          setName(data.firstName || '');
-          setLastName(data.lastName || '');
-          setEmail(data.email || '');
-          setPhone(data.phoneNumber || '');
-          setProfilePicture(normalizeImageUrl(data.profilePicture || null));
-        }
+        setName(result.profile.firstName);
+        setLastName(result.profile.lastName);
+        setEmail(result.profile.email);
+        setPhone(result.profile.phoneNumber);
+        setProfilePicture(result.profile.profilePicture);
       } catch (error) {
         console.error(error);
       } finally {

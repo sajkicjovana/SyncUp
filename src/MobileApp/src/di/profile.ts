@@ -1,4 +1,7 @@
-import { createLoadProfileDashboard } from '../application/profile/useCases';
+import {
+  createLoadPersonalInfo,
+  createLoadProfileDashboard,
+} from '../application/profile/useCases';
 import { asyncStorageSessionStore } from '../data/auth/AsyncStorageSessionStore';
 import { httpMyTicketsGateway } from '../data/myTickets/HttpMyTicketsGateway';
 import { httpProfileDashboardGateway } from '../data/profile/HttpProfileDashboardGateway';
@@ -8,5 +11,10 @@ export const loadProfileDashboard = createLoadProfileDashboard(
   httpProfileDashboardGateway,
   httpMyTicketsGateway,
   httpReservationsGateway,
+  asyncStorageSessionStore.getToken,
+);
+
+export const loadPersonalInfo = createLoadPersonalInfo(
+  httpProfileDashboardGateway,
   asyncStorageSessionStore.getToken,
 );
