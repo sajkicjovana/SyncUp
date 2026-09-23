@@ -200,7 +200,15 @@ useEffect(() => {
 
 
 
-        <TouchableOpacity style={styles.statBox} onPress={() => router.push('/favorites')}>
+        <TouchableOpacity
+          style={styles.statBox}
+          onPress={() =>
+            router.navigate({
+              pathname: '/(tabs)/favorites',
+              params: { from: 'profile' },
+            })
+          }
+        >
           <Text style={styles.statNumber}>{favorites.length}</Text>
           <Text style={styles.statLabel}>{t('profile.favorites')}</Text>
         </TouchableOpacity>

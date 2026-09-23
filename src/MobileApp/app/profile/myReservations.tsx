@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, BackHandler, Platform } from 'react-native';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { loadMyReservations } from '../../src/di/reservations';
@@ -9,9 +9,28 @@ import type { EventReservationSummary } from '../../src/application/reservations
 export default function MyReservations() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { from } = useLocalSearchParams();
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const [reservations, setReservations] = useState<EventReservationSummary[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleBack = useCallback(() => {
+    if (from === 'profile') router.dismissTo('/(tabs)/profile');
+    else router.back();
+  }, [from, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android' || from !== 'profile') return;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleBack();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [from, handleBack])
+  );
 
   useEffect(() => {
     const fetchReservations = async () => {
@@ -53,10 +72,7 @@ export default function MyReservations() {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <TouchableOpacity
-          onPress={() => {
-            if (from === 'profile') router.replace('/profile');
-            else router.back();
-          }}
+          onPress={handleBack}
           style={styles.backButton}
           activeOpacity={0.7}
         >

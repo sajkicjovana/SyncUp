@@ -113,29 +113,47 @@ function buildLeafletHtml(payload: {
 
 
 export default function EventDetailScreen() {
-  const { id, from } = useLocalSearchParams();
+  const { id, from, favoritesFrom: rawFavoritesFrom } = useLocalSearchParams<{
+    id?: string | string[];
+    from?: string | string[];
+    favoritesFrom?: string | string[];
+  }>();
+  const favoritesFrom = Array.isArray(rawFavoritesFrom)
+    ? rawFavoritesFrom[0]
+    : rawFavoritesFrom;
   const router = useRouter();
   const { i18n, t } = useTranslation();
 
-  const tabDestination = from === 'favorites' ? '/(tabs)/favorites'
-    : from === 'search' ? '/(tabs)/search'
-    : from === 'events' ? '/(tabs)/events'
-    : null;
+  const hasOriginTab = from === 'favorites' || from === 'search' || from === 'events';
 
   const returnToOriginTab = useCallback(() => {
-    if (!tabDestination) return false;
-    router.dismissTo(tabDestination);
-    return true;
-  }, [router, tabDestination]);
+    if (from === 'favorites') {
+      router.dismissTo(
+        favoritesFrom === 'profile'
+          ? { pathname: '/(tabs)/favorites', params: { from: 'profile' } }
+          : '/(tabs)/favorites'
+      );
+      return true;
+    }
+    if (from === 'search') {
+      router.dismissTo('/(tabs)/search');
+      return true;
+    }
+    if (from === 'events') {
+      router.dismissTo('/(tabs)/events');
+      return true;
+    }
+    return false;
+  }, [favoritesFrom, from, router]);
 
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS !== 'android' || !tabDestination) return;
+      if (Platform.OS !== 'android' || !hasOriginTab) return;
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', returnToOriginTab);
 
       return () => subscription.remove();
-    }, [returnToOriginTab, tabDestination])
+    }, [hasOriginTab, returnToOriginTab])
   );
 
 

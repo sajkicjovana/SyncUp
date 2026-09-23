@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { API_URL } from '../../config';
 import { favoritesUseCases } from '../../src/di/favorites';
 import type { FavoriteEvent } from '../../src/domain/favorites';
@@ -10,10 +10,19 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  BackHandler,
+  Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from 'expo-router';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { ParamListBase } from '@react-navigation/native';
 import { useFavorites } from '../context/FavoriteContext';
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
 export default function FavoritesScreen() {
@@ -23,7 +32,36 @@ export default function FavoritesScreen() {
   const [isGuest, setIsGuest] = useState(false);
   const [imageLoading, setImageLoading] = useState<{ [key: number]: boolean }>({});
   const router = useRouter();
+  const tabNavigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const { t } = useTranslation();
+
+  useEffect(
+    () =>
+      tabNavigation.addListener('tabPress', () => {
+        if (from === 'profile') tabNavigation.setParams({ from: undefined });
+      }),
+    [from, tabNavigation]
+  );
+
+  const returnToProfile = useCallback(() => {
+    tabNavigation.setParams({ from: undefined });
+    router.navigate('/(tabs)/profile');
+  }, [router, tabNavigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android' || from !== 'profile') return;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        returnToProfile();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [from, returnToProfile])
+  );
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -62,7 +100,11 @@ export default function FavoritesScreen() {
       onPress={() =>
         router.push({
           pathname: '../event/[id]',
-          params: { id: item.id, from: 'favorites'},
+          params: {
+            id: item.id,
+            from: 'favorites',
+            ...(from === 'profile' ? { favoritesFrom: 'profile' } : {}),
+          },
         })
       }
     >
@@ -117,7 +159,20 @@ export default function FavoritesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>{t('yourFavorites')}</Text>
+      {from === 'profile' ? (
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            onPress={returnToProfile}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name='arrow-back' size={28} color='black' />
+          </TouchableOpacity>
+          <Text style={styles.profileOriginHeader}>{t('yourFavorites')}</Text>
+        </View>
+      ) : (
+        <Text style={styles.header}>{t('yourFavorites')}</Text>
+      )}
       {isGuest ? (
         <Text style={styles.empty}>{t('mustBeLoggedInToViewFavorites')}</Text>
       ) : events.length === 0 ? (
@@ -147,6 +202,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     marginBottom: 24,
+    textAlign: 'center',
+    color: '#1a202c',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 6,
+    borderRadius: 8,
+  },
+  profileOriginHeader: {
+    flex: 1,
+    marginRight: 40,
+    fontSize: 24,
+    fontWeight: '900',
     textAlign: 'center',
     color: '#1a202c',
   },

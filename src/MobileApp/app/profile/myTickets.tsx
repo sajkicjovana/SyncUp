@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  BackHandler,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { loadMyTickets } from '../../src/di/myTickets';
 import { MyTicketsTokenReadError } from '../../src/application/myTickets/useCases';
 import type { GroupedMyTicket } from '../../src/application/myTickets/ports';
@@ -18,8 +20,27 @@ export default function ProfileTickets() {
   const [groupedTickets, setGroupedTickets] = useState<GroupedMyTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { from } = useLocalSearchParams();
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const { t } = useTranslation();
+
+  const handleBack = useCallback(() => {
+    if (from === 'profile') router.dismissTo('/(tabs)/profile');
+    else router.back();
+  }, [from, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android' || from !== 'profile') return;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleBack();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [from, handleBack])
+  );
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -94,10 +115,7 @@ export default function ProfileTickets() {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <TouchableOpacity
-          onPress={() => {
-            if (from === 'profile') router.replace('/profile');
-            else router.back();
-          }}
+          onPress={handleBack}
           style={styles.backButton}
           activeOpacity={0.7}
         >
