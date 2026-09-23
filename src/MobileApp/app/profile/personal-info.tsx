@@ -9,12 +9,14 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { loadPersonalInfo, savePersonalInfo } from '../../src/di/profile';
+import { theme } from '../../constants/theme';
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -158,19 +160,19 @@ export default function PersonalInfoScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.push('../(tabs)/profile')}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.titleWrapper}>
           <Text style={styles.title}>{t('personalInfo.title')}</Text>
@@ -193,15 +195,15 @@ export default function PersonalInfoScreen() {
         )}
 
         <TouchableOpacity onPress={pickImage} style={styles.editButton}>
-          <Ionicons name="pencil" size={24} color="#2563EB" />
+          <Ionicons name="camera-outline" size={20} color={theme.colors.primary} />
         </TouchableOpacity>
-        {(profilePicture || newProfileImage) && (
-          <TouchableOpacity onPress={handleDeleteImage} style={styles.deleteButton}>
-            <Ionicons name="trash" size={24} color="red" />
-          </TouchableOpacity>
-        )}
-
       </View>
+      {(profilePicture || newProfileImage) && (
+        <TouchableOpacity onPress={handleDeleteImage} style={styles.deleteButton}>
+          <Ionicons name="trash-outline" size={16} color="#C53030" />
+          <Text style={styles.deleteText}>{t('personalInfo.delete')}</Text>
+        </TouchableOpacity>
+      )}
 
       <Text style={styles.label}>{t('personalInfo.firstName')}</Text>
       <TextInput
@@ -240,19 +242,40 @@ export default function PersonalInfoScreen() {
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveText}>{t('personalInfo.saveChanges')}</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: '#fff', padding: 20, paddingTop: 60, flexGrow: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-  backButton: { paddingRight: 10 },
-  titleWrapper: { flex: 1, alignItems: 'center', marginRight: 34 },
-  title: { fontSize: 22, fontWeight: '700' },
+  container: {
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
+    flexGrow: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  backButton: {
+    paddingVertical: theme.spacing.sm,
+    paddingRight: theme.spacing.md,
+  },
+  titleWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    marginRight: 36,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: theme.spacing.sm,
     position: 'relative',
     width: 120,
     height: 120,
@@ -264,51 +287,70 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 2,
-    borderColor: '#2563EB',
+    borderColor: theme.colors.primary,
     alignSelf: 'center',
   },
   editButton: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 4,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
+    right: 0,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.round,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    shadowColor: theme.shadow.color,
+    shadowOffset: theme.shadow.offset,
+    shadowOpacity: theme.shadow.opacity,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
   },
   deleteButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 4,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6, marginTop: 16 },
+  deleteText: {
+    color: '#C53030',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.control,
+    paddingHorizontal: theme.spacing.md,
     fontSize: 16,
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.surface,
   },
   saveButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: theme.radii.control,
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: theme.spacing.xl,
   },
-  saveText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  saveText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
 });
