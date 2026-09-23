@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Text,
-  View,
-  StyleSheet,
   Image,
-  TouchableOpacity,
   Modal,
   Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { discardStartupSession, restoreSession } from '../src/di/auth';
+import { theme } from '../constants/theme';
 
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [selectedLang, setSelectedLang] = useState<'en' | 'sr'>('en');
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
@@ -44,36 +49,51 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.langMenu}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        {
+          paddingTop: insets.top + theme.spacing.sm,
+          paddingBottom: insets.bottom + theme.spacing.xxl,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.langMenu, { top: insets.top + theme.spacing.sm }]}>
         <TouchableOpacity
           onPress={() => setLanguageModalVisible(true)}
           style={styles.langToggle}
+          activeOpacity={0.7}
         >
-          <Text style={styles.langEmoji}>
-            {selectedLang === 'en' ? '🇬🇧' : '🇷🇸'}
-          </Text>
+          <Ionicons name="language-outline" size={20} color={theme.colors.primary} />
+          <Text style={styles.langCode}>{selectedLang.toUpperCase()}</Text>
         </TouchableOpacity>
       </View>
 
-      <Image
-        source={require('../assets/images/SyncUpLogo.png')}
-        style={styles.icon}
-      />
+      <View style={styles.hero}>
+        <Image
+          source={require('../assets/images/SyncUpLogo.png')}
+          style={styles.icon}
+          resizeMode="contain"
+        />
+        <Text style={styles.subtitle}>Discover the World at Your Fingertips</Text>
+      </View>
 
-      <Text style={styles.subtitle}>Discover the World at Your Fingertips</Text>
+      <View style={styles.actions}>
+        <Link href="/login" asChild>
+          <TouchableOpacity style={styles.button} activeOpacity={0.8}>
+            <Ionicons name="log-in-outline" size={20} color={theme.colors.surface} />
+            <Text style={styles.buttonText}>{t('home.login_signup')}</Text>
+          </TouchableOpacity>
+        </Link>
 
-      <Link href="/login" asChild>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>{t('home.login_signup')}</Text>
-        </TouchableOpacity>
-      </Link>
-
-      <Link href="/guest" asChild>
-        <TouchableOpacity>
-          <Text style={styles.guestText}>{t('home.guest_mode')}</Text>
-        </TouchableOpacity>
-      </Link>
+        <Link href="/guest" asChild>
+          <TouchableOpacity style={styles.guestButton} activeOpacity={0.7}>
+            <Ionicons name="compass-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.guestText}>{t('home.guest_mode')}</Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
 
       <Modal
         transparent
@@ -85,107 +105,153 @@ export default function HomeScreen() {
           style={styles.modalOverlay}
           onPress={() => setLanguageModalVisible(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { marginTop: insets.top + 52 }]}>
             <TouchableOpacity
               style={styles.langOption}
               onPress={() => handleLanguageSwitch('en')}
             >
-              <Text style={styles.optionText}>🇬🇧 English</Text>
+              <Text style={styles.optionText}>English</Text>
+              {selectedLang === 'en' && (
+                <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.langOption}
               onPress={() => handleLanguageSwitch('sr')}
             >
-              <Text style={styles.optionText}>🇷🇸 Srpski</Text>
+              <Text style={styles.optionText}>Srpski</Text>
+              {selectedLang === 'sr' && (
+                <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+              )}
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
+    flexGrow: 1,
+    minHeight: '100%',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    paddingHorizontal: theme.spacing.screen,
   },
   langMenu: {
     position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 10,
+    right: theme.spacing.screen,
+    zIndex: 1,
   },
   langToggle: {
-    backgroundColor: '#EEE',
-    padding: 10,
-    borderRadius: 20,
-    width: 50,
+    minWidth: 72,
+    height: 40,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.round,
+  },
+  langCode: {
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  hero: {
+    width: '100%',
     alignItems: 'center',
   },
-  langEmoji: {
-    fontSize: 20,
-  },
   icon: {
-    width: 250,
-    height: 250,
-    marginBottom: 10,
+    width: 220,
+    height: 180,
   },
   subtitle: {
-    fontSize: 18,
-    textAlign: 'center',
-    color: '#555',
+    maxWidth: 300,
+    marginTop: theme.spacing.sm,
+    color: theme.colors.textSecondary,
+    fontSize: 17,
     fontWeight: '500',
-    marginVertical: 20,
-    fontStyle: 'italic',
-    lineHeight: 26,
-    maxWidth: 280,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  actions: {
+    width: '100%',
+    maxWidth: 360,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.xxl,
   },
   button: {
-    backgroundColor: '#7069E1',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    width: 300,
-    marginTop: 40,
-    marginBottom: 10,
+    width: '100%',
+    minHeight: 50,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.control,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: theme.colors.surface,
+    fontWeight: '700',
     fontSize: 16,
     textAlign: 'center',
   },
+  guestButton: {
+    width: '100%',
+    minHeight: 50,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radii.control,
+  },
   guestText: {
-    color: '#333',
-    textDecorationLine: 'underline',
-    marginTop: 10,
-    marginBottom: 16,
+    color: theme.colors.primaryDark,
+    fontSize: 16,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(16, 42, 67, 0.24)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
-    paddingTop: 80,
-    paddingRight: 20,
+    paddingRight: theme.spacing.screen,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 10,
-    width: 150,
-    elevation: 4,
+    width: 160,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.control,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
   },
   langOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   optionText: {
-    fontSize: 16,
-    fontWeight: '500',
+    color: theme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

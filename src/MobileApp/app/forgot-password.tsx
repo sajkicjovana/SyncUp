@@ -1,13 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { requestPasswordRecovery } from '../src/di/auth';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { theme } from '../constants/theme';
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleForgotPassword = async () => {
     if (!email.includes('@')) {
@@ -26,73 +40,144 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Strelica za povratak */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backArrow}>‹</Text>
-      </TouchableOpacity>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + theme.spacing.sm,
+            paddingBottom: insets.bottom + theme.spacing.xxl,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('forgotPasswordTitle')}</Text>
+        </View>
 
-      <Text style={styles.title}>{t('forgotPasswordTitle')}</Text>
-      <Text style={styles.subtitle}>{t('forgotPasswordSubtitle')}</Text>
+        <View style={styles.formCard}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="key-outline" size={26} color={theme.colors.primary} />
+          </View>
+          <Text style={styles.subtitle}>{t('forgotPasswordSubtitle')}</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder={t('emailPlaceholder')}
-        placeholderTextColor="#9CA3AF"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        onChangeText={setEmail}
-        value={email}
-      />
+          <Text style={styles.label}>{t('emailPlaceholder')}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={t('emailPlaceholder')}
+            placeholderTextColor={theme.colors.textMuted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            onChangeText={setEmail}
+            value={email}
+          />
 
-      <TouchableOpacity style={styles.button} onPress={handleForgotPassword}>
-        <Text style={styles.buttonText}>{t('sendResetLink')}</Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity style={styles.button} onPress={handleForgotPassword}>
+            <Text style={styles.buttonText}>{t('sendResetLink')}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#F9FAFB' },
-  backButton: {
-    marginTop: 20,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-    padding: 8,
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
   },
-  backArrow: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.screen,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
+    flex: 1,
+    marginRight: 44,
+    color: theme.colors.textPrimary,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
     textAlign: 'center',
+  },
+  formCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.card,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radii.round,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 24,
+    marginBottom: theme.spacing.xl,
+    color: theme.colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
     textAlign: 'center',
   },
+  label: {
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   input: {
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    height: 48,
+    marginBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    color: theme.colors.textPrimary,
     fontSize: 16,
-    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.control,
   },
   button: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    borderRadius: 12,
     alignItems: 'center',
+    paddingVertical: 14,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.control,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: {
+    color: theme.colors.surface,
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

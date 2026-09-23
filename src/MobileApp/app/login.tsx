@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFavorites } from './context/FavoriteContext';
 import { signIn } from '../src/di/auth';
 import {
-  View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
+  View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { theme } from '../constants/theme';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,141 +65,197 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{t('welcomeToSyncUp')}</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder={t('emailPlaceholder')}
-        placeholderTextColor="#9CA3AF" 
-        keyboardType="email-address"
-        autoCapitalize="none"
-        onChangeText={setEmail}
-        value={email}
-      />
-
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder={t('passwordPlaceholder')}
-          placeholderTextColor="#9CA3AF" 
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-          value={password}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Text style={styles.toggleText}>
-            {showPassword ? t('hide') : t('show')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity
-                onPress={() => router.push('./forgot-password')} >
-       <Text style={styles.forgot}>{t('forgotPassword')}</Text>
-        </TouchableOpacity>
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.loginText}>{t('login')}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.signupButton}
-        onPress={() => router.replace('/signup')}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + theme.spacing.sm,
+            paddingBottom: insets.bottom + theme.spacing.xxl,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.signupText}>{t('signup')}</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.header}>
+          <View style={styles.headerIcon}>
+            <Ionicons name="person-outline" size={28} color={theme.colors.primary} />
+          </View>
+          <Text style={styles.title}>{t('welcomeToSyncUp')}</Text>
+        </View>
+
+        <View style={styles.formCard}>
+          <Text style={styles.label}>{t('emailPlaceholder')}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={t('emailPlaceholder')}
+            placeholderTextColor={theme.colors.textMuted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            onChangeText={setEmail}
+            value={email}
+          />
+
+          <Text style={styles.label}>{t('passwordPlaceholder')}</Text>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder={t('passwordPlaceholder')}
+              placeholderTextColor={theme.colors.textMuted}
+              secureTextEntry={!showPassword}
+              onChangeText={setPassword}
+              value={password}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.visibilityButton}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
+                color={theme.colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={() => router.push('./forgot-password')}>
+            <Text style={styles.forgot}>{t('forgotPassword')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginText}>{t('login')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.signupButton}
+            onPress={() => router.replace('/signup')}
+          >
+            <Text style={styles.signupText}>{t('signup')}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    backgroundColor: theme.colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    backgroundColor: '#F9FAFB',
+    paddingHorizontal: theme.spacing.screen,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  headerIcon: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radii.round,
   },
   title: {
-    fontSize: 32,
+    color: theme.colors.textPrimary,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 32,
     textAlign: 'center',
   },
-  input: {
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 16,
+  formCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.card,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
+  },
+  label: {
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  input: {
+    height: 48,
+    marginBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.control,
   },
   passwordContainer: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 50,
+    paddingLeft: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.control,
   },
   passwordInput: {
     flex: 1,
+    color: theme.colors.textPrimary,
     fontSize: 16,
-    color: '#111827',
   },
-  toggleText: {
-    color: '#3B82F6',
-    fontWeight: '600',
-    fontSize: 14,
-    marginLeft: 8,
+  visibilityButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   forgot: {
-    color: '#EF4444',
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+    color: theme.colors.primaryDark,
     fontSize: 14,
+    fontWeight: '600',
     textAlign: 'right',
-    marginBottom: 28,
   },
   loginButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 14,
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.control,
   },
   loginText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: theme.colors.surface,
     fontSize: 16,
+    fontWeight: '700',
   },
   signupButton: {
-    borderWidth: 1.5,
-    borderColor: '#3B82F6',
-    paddingVertical: 14,
-    borderRadius: 12,
     alignItems: 'center',
+    paddingVertical: 14,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radii.control,
   },
   signupText: {
-    color: '#3B82F6',
-    fontWeight: '600',
+    color: theme.colors.primaryDark,
     fontSize: 16,
+    fontWeight: '700',
   },
 });
