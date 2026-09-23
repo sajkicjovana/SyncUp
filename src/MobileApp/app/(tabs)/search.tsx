@@ -21,11 +21,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { useRouter } from 'expo-router';
 import { API_URL as BASE_URL } from '../../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AntDesign } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
 
 import { searchUseCases } from '../../src/di/search';
+import { readAuthToken } from '../../src/di/auth';
 import { selectFreeSearchEvents } from '../../src/domain/search';
 import type { SearchEvent as EventType, SearchPrices } from '../../src/domain/search';
 const DETAILS_API_URL = `${BASE_URL}/api/Events/Details`;
@@ -159,7 +159,7 @@ useEffect(() => {
 
   // OVDE je logika za proveru gosta i toggle favorite sa alertom
   const handleToggleFavorite = async (eventID: number) => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await readAuthToken();
     if (!token) {
       Alert.alert(
         t('notLoggedIn'),

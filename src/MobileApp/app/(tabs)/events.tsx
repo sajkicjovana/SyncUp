@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AntDesign } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
+import { readAuthToken } from '../../src/di/auth';
 
 export default function EventsScreen() {
   const [events, setEvents] = useState<EventListItem[]>([]);
@@ -50,7 +51,7 @@ export default function EventsScreen() {
 
 
   const handleToggleFavorite = async (eventId: number) => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await readAuthToken();
     if (!token) {
       Alert.alert(
         t('notLoggedIn'),

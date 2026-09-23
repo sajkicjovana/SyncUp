@@ -59,6 +59,10 @@ export type ChangePasswordResult =
   | { status: 'changed' }
   | { status: 'rejected'; message?: unknown };
 
+export function createReadAuthToken(readToken: ReadAuthToken): ReadAuthToken {
+  return () => readToken();
+}
+
 export function createChangePassword(
   gateway: ChangePasswordGateway,
   readToken: ReadAuthToken,

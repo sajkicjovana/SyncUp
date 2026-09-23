@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import MapView, { Marker, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { loadEventAgenda } from '../../src/di/eventAgenda';
@@ -28,6 +27,7 @@ import { geocodeLocation as geocodeEventLocation } from '../../src/di/eventLocat
 import { loadEventResources } from '../../src/di/eventResources';
 import { favoritesUseCases } from '../../src/di/favorites';
 import { loadPersonalInfo } from '../../src/di/profile';
+import { readAuthToken } from '../../src/di/auth';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
 import type { EventPin, PinCategory } from '../../src/domain/eventPins';
@@ -195,7 +195,7 @@ const [agendaData, setAgendaData] = useState<EventAgendaResponse | null>(null);
   const fetchEvent = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('token');
+      const token = await readAuthToken();
 
       const data = await loadEventDetails(currentId, token);
 
@@ -257,7 +257,7 @@ useEffect(() => {
 
   const fetchResources = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await readAuthToken();
       if (!token) {
         setHasResources(false);
         return;
@@ -287,7 +287,7 @@ useEffect(() => {
     setAgendaError(null);
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await readAuthToken();
 
       const data = await loadEventAgenda(currentId, token);
       setAgendaData(data);
@@ -308,7 +308,7 @@ useEffect(() => {
 
   const fetchResources = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await readAuthToken();
       if (!token) {
         setHasResources(false);
         return;
@@ -431,7 +431,7 @@ const handleAction = async () => {
     const fetchEventPins = async (eventId: number) => {
   try {
     // Za guest ne zahtevamo token
-    const token = await AsyncStorage.getItem('token');
+    const token = await readAuthToken();
 
     const data = await eventPinsUseCases.loadEventPins(eventId, token);
 
@@ -470,7 +470,7 @@ const handleAction = async () => {
     setUpdatingFavorite(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await readAuthToken();
       if (!token) {
         Alert.alert(
           t('authenticationRequired'),

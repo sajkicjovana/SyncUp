@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Credentials } from '../../domain/auth';
 import type { AuthGateway, ChangePasswordGateway, LoginResult, RegisterUserGateway, RegistrationInput, SessionStore } from './ports';
-import { createChangePassword, createRegisterUser, createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
+import { createChangePassword, createReadAuthToken, createRegisterUser, createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
 
 const credentials: Credentials = { email: 'demo@example.test', password: 'Abcdef1!' };
 const passwords = { currentPassword: 'Current1!', newPassword: 'NewPass2!' };
@@ -71,6 +71,42 @@ test('session discard propagates the original removal error without retrying', a
 
   await assert.rejects(discardSession(fake.store), (caught) => caught === error);
   assert.equal(removeCalls, 1);
+});
+
+test('raw auth token read returns the exact non-empty token after one reader call', async () => {
+  let reads = 0;
+  const readAuthToken = createReadAuthToken(async () => {
+    reads += 1;
+    return 'stored-token';
+  });
+
+  assert.equal(await readAuthToken(), 'stored-token');
+  assert.equal(reads, 1);
+});
+
+for (const token of [null, ''] as const) {
+  test(`raw auth token read preserves ${token === null ? 'null' : 'empty string'} unchanged`, async () => {
+    let reads = 0;
+    const readAuthToken = createReadAuthToken(async () => {
+      reads += 1;
+      return token;
+    });
+
+    assert.equal(await readAuthToken(), token);
+    assert.equal(reads, 1);
+  });
+}
+
+test('raw auth token read propagates the exact reader failure without retry or other Auth work', async () => {
+  const error = new Error('Read failed');
+  let reads = 0;
+  const readAuthToken = createReadAuthToken(async () => {
+    reads += 1;
+    throw error;
+  });
+
+  await assert.rejects(readAuthToken(), (caught) => caught === error);
+  assert.equal(reads, 1);
 });
 
 test('invalid credentials never call the gateway or session store', async () => {

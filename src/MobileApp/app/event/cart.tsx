@@ -10,11 +10,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { loadCartDisplayData, purchaseStandardCart, reserveResourcesWithoutTicket } from '../../src/di/cart';
 import { CartStandardPurchaseError } from '../../src/application/cart/useCases';
 import type { CartTicketDisplayItem, CartResourceDisplayItem } from '../../src/application/cart/ports';
+import { readAuthToken } from '../../src/di/auth';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function CartScreen() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  useEffect(() => { AsyncStorage.getItem('token').then(setToken); }, []);
+  useEffect(() => { readAuthToken().then(setToken); }, []);
 
   useEffect(() => {
     const parsedTickets = tickets ? JSON.parse(tickets as string) : {};
