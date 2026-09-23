@@ -241,7 +241,7 @@ if (purchasedAt) {
         style={styles.backToEventsButton}
         onPress={() => {
           if (from === 'reservationDetails') router.back();
-          else if (from === 'myTickets') router.replace('../profile/myTickets');
+          else if (from === 'myTickets') router.back();
           else router.replace('/(tabs)/events'); 
         }}
       >
