@@ -1,6 +1,7 @@
 import {
   createLoadPersonalInfo,
   createLoadProfileDashboard,
+  createPurchaseCredits,
   createSavePersonalInfo,
 } from '../application/profile/useCases';
 import { asyncStorageSessionStore } from '../data/auth/AsyncStorageSessionStore';
@@ -17,6 +18,11 @@ export const loadProfileDashboard = createLoadProfileDashboard(
 );
 
 export const loadPersonalInfo = createLoadPersonalInfo(
+  httpProfileDashboardGateway,
+  asyncStorageSessionStore.getToken,
+);
+
+export const purchaseCredits = createPurchaseCredits(
   httpProfileDashboardGateway,
   asyncStorageSessionStore.getToken,
 );

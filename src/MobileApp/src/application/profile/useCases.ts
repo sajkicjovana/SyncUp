@@ -1,6 +1,8 @@
 import type { MyTicketsGateway } from '../myTickets/ports';
 import type { ReservationRow, ReservationsGateway } from '../reservations/ports';
 import type {
+  CreditPurchaseGateway,
+  CreditPurchaseResult,
   CurrentProfileGateway,
   LoadPersonalInfoResult,
   LoadProfileDashboardResult,
@@ -37,6 +39,16 @@ export function createLoadPersonalInfo(
     }
 
     return { status: 'loaded', profile: result.profile };
+  };
+}
+
+export function createPurchaseCredits(
+  gateway: CreditPurchaseGateway,
+  readToken: ReadProfileToken,
+) {
+  return async (amount: number): Promise<CreditPurchaseResult> => {
+    const token = await readToken();
+    return gateway.purchaseCredits(token, amount);
   };
 }
 

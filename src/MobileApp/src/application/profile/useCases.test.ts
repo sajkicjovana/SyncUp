@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type { MyTicketRow, MyTicketsGateway } from '../myTickets/ports';
 import type { ReservationRow, ReservationsGateway } from '../reservations/ports';
 import type {
+  CreditPurchaseGateway,
   CurrentProfileGateway,
   PersonalInfoMutationGateway,
   PersonalInfoUploadFailure,
@@ -13,6 +14,7 @@ import type {
 import {
   createLoadPersonalInfo,
   createLoadProfileDashboard,
+  createPurchaseCredits,
   createSavePersonalInfo,
   ProfileDashboardTokenReadError,
 } from './useCases';
@@ -845,4 +847,108 @@ test('update rejection remains distinguishable and thrown update failure propaga
     caught => caught === failure,
   );
   assert.equal(updateCalls, 1);
+});
+
+test('credit purchase reads one token and forwards the exact token and amount once', async () => {
+  const calls: Array<{ token: string | null; amount: number }> = [];
+  let tokenReads = 0;
+  let unrelatedCalls = 0;
+  const gateway: ProfileDashboardGateway & CreditPurchaseGateway = {
+    async loadCurrentProfile() {
+      unrelatedCalls++;
+      return { ok: true, profile };
+    },
+    async loadCredits() {
+      unrelatedCalls++;
+      return { ok: true, credits: 0 };
+    },
+    async purchaseCredits(token, amount) {
+      calls.push({ token, amount });
+      return { ok: true };
+    },
+  };
+
+  assert.deepEqual(
+    await createPurchaseCredits(
+      gateway,
+      async () => { tokenReads++; return 'purchase-token'; },
+    )(125),
+    { ok: true },
+  );
+  assert.equal(tokenReads, 1);
+  assert.deepEqual(calls, [{ token: 'purchase-token', amount: 125 }]);
+  assert.equal(unrelatedCalls, 0);
+});
+
+test('credit purchase preserves an exact raw rejection without retry or refresh', async () => {
+  let purchaseCalls = 0;
+  const gateway: CreditPurchaseGateway = {
+    async purchaseCredits() {
+      purchaseCalls++;
+      return { ok: false, responseText: '{"message":"Credit rejected"}' };
+    },
+  };
+
+  assert.deepEqual(
+    await createPurchaseCredits(gateway, async () => 'token')(25),
+    { ok: false, responseText: '{"message":"Credit rejected"}' },
+  );
+  assert.equal(purchaseCalls, 1);
+});
+
+for (const token of [null, ''] as const) {
+  test(`credit purchase forwards a ${token === null ? 'null' : 'empty'} token and still calls the gateway`, async () => {
+    let tokenReads = 0;
+    const calls: Array<string | null> = [];
+    const gateway: CreditPurchaseGateway = {
+      async purchaseCredits(receivedToken) {
+        calls.push(receivedToken);
+        return { ok: false, responseText: 'Unauthorized' };
+      },
+    };
+
+    assert.deepEqual(
+      await createPurchaseCredits(
+        gateway,
+        async () => { tokenReads++; return token; },
+      )(10),
+      { ok: false, responseText: 'Unauthorized' },
+    );
+    assert.equal(tokenReads, 1);
+    assert.deepEqual(calls, [token]);
+  });
+}
+
+test('credit purchase propagates the original token-reader failure without a gateway call', async () => {
+  const failure = new Error('Token read failed');
+  let purchaseCalls = 0;
+  const gateway: CreditPurchaseGateway = {
+    async purchaseCredits() {
+      purchaseCalls++;
+      return { ok: true };
+    },
+  };
+
+  await assert.rejects(
+    createPurchaseCredits(gateway, async () => { throw failure; })(10),
+    caught => caught === failure,
+  );
+  assert.equal(purchaseCalls, 0);
+});
+
+test('credit purchase propagates the original gateway failure without retry', async () => {
+  const failure = new Error('Purchase failed');
+  let purchaseCalls = 0;
+  const gateway: CreditPurchaseGateway = {
+    async purchaseCredits() {
+      purchaseCalls++;
+      throw failure;
+    },
+  };
+
+  await assert.rejects(
+    createPurchaseCredits(gateway, async () => 'token')(10),
+    caught => caught === failure,
+  );
+  assert.equal(purchaseCalls, 1);
 });

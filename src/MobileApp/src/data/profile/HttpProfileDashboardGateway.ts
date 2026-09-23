@@ -1,5 +1,8 @@
 import { API_URL, apiCall } from '../../../config';
-import type { ProfileDashboardGateway } from '../../application/profile/ports';
+import type {
+  CreditPurchaseGateway,
+  ProfileDashboardGateway,
+} from '../../application/profile/ports';
 
 type ProfileDto = {
   firstName?: unknown;
@@ -15,7 +18,7 @@ function normalizeImageUrl(path: any): string | null {
   return `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-export const httpProfileDashboardGateway: ProfileDashboardGateway = {
+export const httpProfileDashboardGateway: ProfileDashboardGateway & CreditPurchaseGateway = {
   async loadCurrentProfile(token) {
     const response = await apiCall(`${API_URL}/api/MobileUser/profile`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -51,5 +54,23 @@ export const httpProfileDashboardGateway: ProfileDashboardGateway = {
 
     const data = await response.json();
     return { ok: true, credits: data?.credits };
+  },
+
+  async purchaseCredits(token, amount) {
+    const response = await apiCall(`${API_URL}/api/Credit/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(amount),
+    });
+
+    if (response.ok) {
+      await response.json();
+      return { ok: true };
+    }
+
+    return { ok: false, responseText: await response.text() };
   },
 };

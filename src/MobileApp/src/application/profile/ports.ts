@@ -24,6 +24,14 @@ export interface ProfileDashboardGateway extends CurrentProfileGateway {
   loadCredits(token: string): Promise<CreditsGatewayResult>;
 }
 
+export type CreditPurchaseResult =
+  | { ok: true }
+  | { ok: false; responseText: string };
+
+export interface CreditPurchaseGateway {
+  purchaseCredits(token: string | null, amount: number): Promise<CreditPurchaseResult>;
+}
+
 export type ReadProfileToken = () => Promise<string | null>;
 
 export type ProfileDashboardUpdate =

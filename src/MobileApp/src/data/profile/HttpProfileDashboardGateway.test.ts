@@ -224,3 +224,95 @@ test('credits malformed JSON, response-text failures, and transport failures pro
     caught => caught === networkError,
   );
 });
+
+test('credit purchase preserves the exact POST endpoint, headers, scalar body, and parses success JSON', async () => {
+  let jsonReads = 0;
+  const calls = mockFetch({
+    ok: true,
+    json: async () => {
+      jsonReads++;
+      return { credits: 500, ignored: 'value' };
+    },
+  });
+
+  assert.deepEqual(
+    await httpProfileDashboardGateway.purchaseCredits('purchase-token', 125.5),
+    { ok: true },
+  );
+  assert.equal(jsonReads, 1);
+  assert.deepEqual(calls, [{
+    input: `${API_URL}/api/Credit/add`,
+    init: {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer purchase-token',
+        'Accept-Language': 'sr',
+      },
+      body: JSON.stringify(125.5),
+    },
+  }]);
+});
+
+for (const [token, authorization] of [
+  [null, 'Bearer null'],
+  ['', 'Bearer '],
+] as const) {
+  test(`credit purchase preserves the Authorization header for token ${String(token)}`, async () => {
+    const calls = mockFetch({ ok: true, json: async () => ({ credits: 10 }) });
+    assert.deepEqual(await httpProfileDashboardGateway.purchaseCredits(token, 10), { ok: true });
+    assert.equal(
+      (calls[0].init?.headers as Record<string, string>).Authorization,
+      authorization,
+    );
+  });
+}
+
+for (const rawText of [
+  '{"message":"Credit cannot exceed 1,000,000."}',
+  '',
+] as const) {
+  test(`credit purchase preserves raw non-OK text ${JSON.stringify(rawText)} without JSON parsing`, async () => {
+    let textReads = 0;
+    let jsonReads = 0;
+    mockFetch({
+      ok: false,
+      text: async () => { textReads++; return rawText; },
+      json: async () => { jsonReads++; throw new Error('must not parse'); },
+    });
+
+    assert.deepEqual(
+      await httpProfileDashboardGateway.purchaseCredits('token', 10),
+      { ok: false, responseText: rawText },
+    );
+    assert.equal(textReads, 1);
+    assert.equal(jsonReads, 0);
+  });
+}
+
+test('credit purchase propagates malformed success JSON', async () => {
+  const error = new SyntaxError('invalid purchase JSON');
+  mockFetch({ ok: true, json: async () => { throw error; } });
+  await assert.rejects(
+    httpProfileDashboardGateway.purchaseCredits('token', 10),
+    caught => caught === error,
+  );
+});
+
+test('credit purchase propagates response-text failure', async () => {
+  const error = new Error('purchase text failed');
+  mockFetch({ ok: false, text: async () => { throw error; } });
+  await assert.rejects(
+    httpProfileDashboardGateway.purchaseCredits('token', 10),
+    caught => caught === error,
+  );
+});
+
+test('credit purchase propagates transport failure', async () => {
+  const error = new Error('purchase network failed');
+  globalThis.fetch = (async () => { throw error; }) as typeof fetch;
+  await assert.rejects(
+    httpProfileDashboardGateway.purchaseCredits('token', 10),
+    caught => caught === error,
+  );
+});

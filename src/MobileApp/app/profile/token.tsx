@@ -10,12 +10,10 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Animatable from 'react-native-animatable';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { API_URL } from '../../config';
-import { apiCall } from '../../config';
+import { purchaseCredits } from '../../src/di/profile';
 
 export default function TokenPurchaseScreen() {
   const [amount, setAmount] = useState('');
@@ -35,25 +33,16 @@ export default function TokenPurchaseScreen() {
     await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulacija animacije
 
     setLoading(true);
-    const token = await AsyncStorage.getItem('token');
-    const response = await apiCall(`${API_URL}/api/Credit/add`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(parsedAmount),
-    });
+    const result = await purchaseCredits(parsedAmount);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
       Alert.alert(
         `${t('payment.success')}`,
         `${parsedAmount} ${t('payment.success2')}`
       );
       setAmount('');
     } else {
-      const errorText = await response.text(); // pročitaj poruku sa backa
+      const errorText = result.responseText;
       if (errorText.includes("Credit cannot exceed")) {
         Alert.alert(`${t('error')}`, `${t('payment.moneyError')}`);
       } else {
