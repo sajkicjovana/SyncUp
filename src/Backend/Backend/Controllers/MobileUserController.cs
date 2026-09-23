@@ -80,7 +80,7 @@ namespace Backend.Controllers
             if (_context.Users.Any(u => u.Email == dto.Email && u.UserId != userId))
                 return BadRequest(new { message = _localizer["common.email_exists"].ToString() });
 
-            if (string.IsNullOrWhiteSpace(dto.Email) || !CommonHelpers.IsPhoneNumberValid(dto.Email))
+            if (string.IsNullOrWhiteSpace(dto.Email) || !CommonHelpers.IsEmailInValidForm(dto.Email))
                 return BadRequest(new { message = _localizer["common.invalid_email"].ToString() });
 
             if (!string.IsNullOrWhiteSpace(dto.PhoneNumber) && !CommonHelpers.IsPhoneNumberValid(dto.PhoneNumber))
