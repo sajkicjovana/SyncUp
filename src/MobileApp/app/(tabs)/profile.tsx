@@ -13,12 +13,12 @@ import {
 } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { CommonActions } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native';
 import type { ProfileDashboardUpdate } from '../../src/application/profile/ports';
 import { ProfileDashboardTokenReadError } from '../../src/application/profile/useCases';
+import { discardCurrentSession } from '../../src/di/auth';
 import { loadProfileDashboard } from '../../src/di/profile';
 
 export default function ProfileScreen() {
@@ -116,7 +116,7 @@ useEffect(() => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('token');
+              await discardCurrentSession();
               clearFavorites();
               setGuestMode(true);
               rootNavigation.dispatch(

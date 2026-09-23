@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Credentials } from '../../domain/auth';
 import type { AuthGateway, LoginResult, SessionStore } from './ports';
-import { createRequestPasswordRecovery, createRestoreSession, createSignIn } from './useCases';
+import { createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
 
 const credentials: Credentials = { email: 'demo@example.test', password: 'Abcdef1!' };
 
@@ -42,6 +42,28 @@ function setup(initialToken: string | null = null) {
   };
   return { calls, store, gateway, currentToken: () => token };
 }
+
+test('discarding a session removes the token exactly once', async () => {
+  const fake = setup('stored-token');
+
+  await discardSession(fake.store);
+
+  assert.deepEqual(fake.calls, ['remove']);
+  assert.equal(fake.currentToken(), null);
+});
+
+test('session discard propagates the original removal error without retrying', async () => {
+  const fake = setup('stored-token');
+  const error = new Error('Remove failed');
+  let removeCalls = 0;
+  fake.store.removeToken = async () => {
+    removeCalls += 1;
+    throw error;
+  };
+
+  await assert.rejects(discardSession(fake.store), (caught) => caught === error);
+  assert.equal(removeCalls, 1);
+});
 
 test('invalid credentials never call the gateway or session store', async () => {
   const fake = setup();
