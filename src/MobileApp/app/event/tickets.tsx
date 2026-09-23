@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { loadTicketSelectionOptions } from '../../src/di/ticketSelection';
 import type { TicketOption, ResourceOption } from '../../src/application/ticketSelection/ports';
+import { theme } from '../../constants/theme';
 
 export default function TicketPurchaseScreen() {
   const router = useRouter();
@@ -103,8 +104,8 @@ export default function TicketPurchaseScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#0047FF" />
-        <Text style={{ marginTop: 16, fontSize: 16, color: '#0047FF' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.statusText}>
           {t('tickets.loading')}
         </Text>
       </View>
@@ -114,8 +115,8 @@ export default function TicketPurchaseScreen() {
   if (redirecting) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#0047FF" />
-        <Text style={{ marginTop: 16, fontSize: 16, color: '#0047FF' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.statusText}>
           {t('tickets.redirecting')}
         </Text>
       </View>
@@ -125,10 +126,13 @@ export default function TicketPurchaseScreen() {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#333" />
+        <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
       </TouchableOpacity>
 
-      <Text style={styles.sectionTitle}>🎫 {t('tickets.title')}</Text>
+      <View style={styles.sectionHeading}>
+        <Ionicons name="ticket-outline" size={22} color={theme.colors.primary} />
+        <Text style={styles.sectionTitle}>{t('tickets.title')}</Text>
+      </View>
       {tickets.length === 0 ? (
         <Text style={styles.emptyText}>{t('tickets.noTickets')}</Text>
       ) : (
@@ -137,24 +141,28 @@ export default function TicketPurchaseScreen() {
           const remaining = ticket.available - selectedCount;
 
           return (
-            <View key={`ticket-${ticket.id}`} style={styles.card}>
+            <View
+              key={`ticket-${ticket.id}`}
+              style={[styles.card, selectedCount > 0 && styles.selectedTicketCard]}
+            >
               <Text style={styles.cardTitle}>{ticket.name}</Text>
+              <Text style={styles.priceText}>{ticket.price} RSD</Text>
               <Text style={styles.cardText}>
-                {ticket.price} RSD - {remaining} {t('tickets.available')}
+                {remaining} {t('tickets.available')}
               </Text>
               <View style={styles.counterRow}>
                 <TouchableOpacity
                   onPress={() => handleRemoveFromCart(ticket.id)}
                   style={styles.counterButton}
                 >
-                  <Text style={styles.counterText}>-</Text>
+                  <Ionicons name="remove" size={18} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.counterValue}>{selectedCount}</Text>
                 <TouchableOpacity
                   onPress={() => handleAddToCart(ticket.id)}
                   style={styles.counterButton}
                 >
-                  <Text style={styles.counterText}>+</Text>
+                  <Ionicons name="add" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -162,7 +170,10 @@ export default function TicketPurchaseScreen() {
         })
       )}
 
-      <Text style={styles.sectionTitle}>📦 {t('resources.title')}</Text>
+      <View style={styles.sectionHeading}>
+        <Ionicons name="cube-outline" size={22} color={theme.colors.primary} />
+        <Text style={styles.sectionTitle}>{t('resources.title')}</Text>
+      </View>
       {resources.length === 0 ? (
         <Text style={styles.emptyText}>{t('resources.noResources')}</Text>
       ) : (
@@ -174,7 +185,9 @@ export default function TicketPurchaseScreen() {
               key={`res-${res.id}`}
               style={[
                 styles.card,
-                { flexDirection: 'row', alignItems: 'center', opacity: disabled ? 0.5 : 1 }
+                styles.resourceCard,
+                selectedResources.has(res.id) && styles.selectedResourceCard,
+                disabled && styles.disabledResourceCard,
               ]}
               onPress={() => !disabled && toggleResource(res.id)}
               activeOpacity={disabled ? 1 : 0.7}
@@ -182,14 +195,14 @@ export default function TicketPurchaseScreen() {
               <Ionicons
                 name={selectedResources.has(res.id) ? 'checkbox' : 'square-outline'}
                 size={24}
-                color={disabled ? '#999' : '#0047FF'}
+                color={disabled ? theme.colors.disabled : theme.colors.primary}
                 style={{ marginRight: 10 }}
               />
-              <View style={{ flexShrink: 1 }}>
-                <Text style={[styles.cardTitle, { color: disabled ? '#999' : '#333' }]}>
+              <View style={styles.resourceContent}>
+                <Text style={[styles.cardTitle, disabled && styles.disabledText]}>
                   {res.name}
                 </Text>
-                <Text style={[styles.cardText, { color: disabled ? '#999' : '#666' }]}>
+                <Text style={[styles.cardText, disabled && styles.disabledText]}>
                   {res.price ? `${res.price} RSD - ` : ''}
                 </Text>
               </View>
@@ -209,57 +222,117 @@ export default function TicketPurchaseScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {     
+  container: {
     flex: 1,
-    padding: 35,
-    backgroundColor: '#fff',
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    backgroundColor: theme.colors.background,
   },
-  sectionTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 16, color: '#0047FF' },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
   },
-  cardTitle: { fontSize: 18, fontWeight: '600', color: '#333' },
-  cardText: { fontSize: 14, color: '#666', marginTop: 4 },
+  selectedTicketCard: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  priceText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.primaryDark,
+    marginTop: theme.spacing.xs,
+  },
+  cardText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+  },
   counterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: theme.spacing.md,
     alignSelf: 'flex-end',
   },
   counterButton: {
-    width: 36,
-    height: 36,
-    backgroundColor: '#0047FF',
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.control,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 6,
+    marginHorizontal: theme.spacing.xs,
   },
-  counterText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  counterValue: { fontSize: 16, fontWeight: 'bold', minWidth: 20, textAlign: 'center' },
-  proceedButton: {
-    backgroundColor: '#0047FF',
-    paddingVertical: 14,
-    borderRadius: 12,
+  counterValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    minWidth: 24,
+    textAlign: 'center',
+  },
+  resourceCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 30,
+    minHeight: 64,
+  },
+  selectedResourceCard: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  disabledResourceCard: {
+    opacity: 0.55,
+  },
+  resourceContent: {
+    flexShrink: 1,
+  },
+  disabledText: {
+    color: theme.colors.disabled,
+  },
+  proceedButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    borderRadius: theme.radii.control,
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
     marginBottom: 50,
   },
-  proceedText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  backButton: { padding: 20 },
+  proceedText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  backButton: { paddingVertical: theme.spacing.md, paddingHorizontal: 0 },
+  statusText: {
+    marginTop: theme.spacing.md,
+    fontSize: 16,
+    color: theme.colors.primaryDark,
+  },
   emptyText: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.textMuted,
     fontStyle: 'italic',
-    marginVertical: 8,
+    marginVertical: theme.spacing.sm,
     textAlign: 'center',
   },
 });
