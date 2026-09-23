@@ -17,8 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { readAuthToken } from '../../src/di/auth';
 import { EventCard } from '../../components/EventCard';
 import { theme } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EventsScreen() {
+  const insets = useSafeAreaInsets();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [imageLoading, setImageLoading] = useState<{ [key: number]: boolean }>({});
@@ -108,7 +110,7 @@ export default function EventsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { paddingTop: insets.top + 10, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ marginTop: 10 }}>{t('loadingEvents')}</Text>
       </View>
@@ -116,7 +118,7 @@ export default function EventsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       <Text style={styles.header}>{t('events')}</Text>
       {events.length === 0 ? (
         <Text style={styles.empty}>{t('noEvents')}</Text>

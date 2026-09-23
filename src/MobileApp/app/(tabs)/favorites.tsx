@@ -25,8 +25,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { EventCard } from '../../components/EventCard';
 import { theme } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function FavoritesScreen() {
+  const insets = useSafeAreaInsets();
   const { favorites, toggleFavorite } = useFavorites();
   const [events, setEvents] = useState<FavoriteEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,7 @@ export default function FavoritesScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { paddingTop: insets.top + 10, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ marginTop: 10 }}>{t('loadingFavorites')}</Text>
       </View>
@@ -144,7 +146,7 @@ export default function FavoritesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       {from === 'profile' ? (
         <View style={styles.headerContainer}>
           <TouchableOpacity

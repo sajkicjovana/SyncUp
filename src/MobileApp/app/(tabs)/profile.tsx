@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { CommonActions } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native';
@@ -20,8 +21,11 @@ import type { ProfileDashboardUpdate } from '../../src/application/profile/ports
 import { ProfileDashboardTokenReadError } from '../../src/application/profile/useCases';
 import { discardCurrentSession } from '../../src/di/auth';
 import { loadProfileDashboard } from '../../src/di/profile';
+import { theme } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const rootNavigation = useNavigation('/');
   const { favorites, clearFavorites, setGuestMode } = useFavorites();
@@ -148,7 +152,7 @@ useEffect(() => {
 
   if (!isLoggedIn) {
     return (
-      <View style={styles.centeredContainer}>
+      <View style={[styles.centeredContainer, { paddingTop: insets.top + 10 }]}>
         <Text style={styles.header}>{t('profile.notLoggedIn')}</Text>
         <Text style={styles.message}>{t('profile.loginPrompt')}</Text>
         <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>
@@ -159,17 +163,17 @@ useEffect(() => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 10 }]}>
       <Text style={styles.header}>{t('profile.title')}</Text>
 
       <View style={styles.profileCard}>
-  {renderProfileImage()}
-  <View style={{ flex: 1, marginLeft: 16 }}>
-    <Text style={styles.name}>{`${firstName} ${lastName}`}</Text>
-    <Text style={styles.email}>{email}</Text>
-    <Text style={styles.credits}>{credits} RSD</Text>
-  </View>
-</View>
+        {renderProfileImage()}
+        <View style={styles.profileDetails}>
+          <Text style={styles.name}>{`${firstName} ${lastName}`}</Text>
+          <Text style={styles.email}>{email}</Text>
+          <Text style={styles.credits}>{credits} RSD</Text>
+        </View>
+      </View>
 
       <View style={styles.rowContainer}>
         <TouchableOpacity
@@ -181,6 +185,7 @@ useEffect(() => {
             })
           }
         >
+          <Ionicons name="ticket-outline" size={20} color={theme.colors.primary} />
           <Text style={styles.statNumber}>{ticketsCount}</Text>
           <Text style={styles.statLabel}>{t('profile.tickets')}</Text>
         </TouchableOpacity>
@@ -194,7 +199,8 @@ useEffect(() => {
             })
           }
               >
-          <Text style={styles.statNumber}>{resourcesCount}</Text>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.statNumber}>{resourcesCount}</Text>
           <Text style={styles.statLabel}>{t('profile.myReservations')}</Text>
         </TouchableOpacity>
 
@@ -209,6 +215,7 @@ useEffect(() => {
             })
           }
         >
+          <Ionicons name="heart-outline" size={20} color={theme.colors.favorite} />
           <Text style={styles.statNumber}>{favorites.length}</Text>
           <Text style={styles.statLabel}>{t('profile.favorites')}</Text>
         </TouchableOpacity>
@@ -217,37 +224,43 @@ useEffect(() => {
       <Text style={styles.sectionTitle}>{t('profile.accountSettings')}</Text>
 
       <TouchableOpacity style={styles.option} onPress={() => router.push('../profile/personal-info')}>
-        <Text>👤 {t('profile.personalInfo')}</Text>
-        <Text style={styles.optionArrow}>›</Text>
+        <Ionicons name="person-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.optionLabel}>{t('profile.personalInfo')}</Text>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.option} onPress={() => router.push('../profile/token')}>
-        <Text>💳 {t('profile.payment')}</Text>
-        <Text style={styles.optionArrow}>›</Text>
+        <Ionicons name="card-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.optionLabel}>{t('profile.payment')}</Text>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.option} onPress={() => router.push('../profile/change-password')}>
-        <Text>🔒 {t('profile.changePassword')}</Text>
-        <Text style={styles.optionArrow}>›</Text>
+        <Ionicons name="lock-closed-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.optionLabel}>{t('profile.changePassword')}</Text>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{t('profile.application')}</Text>
 
       <TouchableOpacity style={styles.option} onPress={() => router.push('../profile/about')}>
-        <Text>❓ {t('profile.about')}</Text>
-        <Text style={styles.optionArrow}>›</Text>
+        <Ionicons name="information-circle-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.optionLabel}>{t('profile.about')}</Text>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.option} onPress={() => setLanguageModalVisible(true)}>
-        <Text>🌐 {t('profile.language')}</Text>
-        <Text style={styles.optionArrow}>
+        <Ionicons name="language-outline" size={21} color={theme.colors.primary} />
+        <Text style={styles.optionLabel}>{t('profile.language')}</Text>
+        <Text style={styles.languageValue}>
           {selectedLang === 'en' ? '🇬🇧' : '🇷🇸'} ›
         </Text>
       </TouchableOpacity>
 
 
-      <TouchableOpacity style={styles.option} onPress={handleLogout}>
-        <Text style={{ color: 'red' }}>🚪 {t('profile.logout')}</Text>
-        <Text style={[styles.optionArrow, { color: 'red' }]}>›</Text>
+      <TouchableOpacity style={[styles.option, styles.logoutOption]} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={21} color="#C53030" />
+        <Text style={[styles.optionLabel, styles.logoutText]}>{t('profile.logout')}</Text>
+        <Ionicons name="chevron-forward" size={20} color="#C53030" />
       </TouchableOpacity>
 
       <Modal visible={imageModalVisible} transparent animationType="fade">
@@ -288,7 +301,7 @@ useEffect(() => {
     </Pressable>
   </Modal>
 
-    </View>
+    </ScrollView>
   );
 }
 
@@ -298,142 +311,150 @@ const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingHorizontal: width * 0.06, // ~6% širine ekrana
-    paddingTop: height * 0.05,
-    paddingBottom: height * 0.02,
-    backgroundColor: '#fff',
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
+    backgroundColor: theme.colors.background,
   },
   header: {
-    fontSize: width * 0.06,
-    fontWeight: '900',
-    marginBottom: height * 0.01,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: theme.spacing.lg,
     textAlign: 'center',
-    color: '#1a202c',
-    letterSpacing: 0.8,
+    color: theme.colors.textPrimary,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#7c3aed',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
-    padding: width * 0.04,
-    marginBottom: height * 0.025,
-    shadowColor: '#7c3aed',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 15,
-    elevation: 10,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
   },
   avatarImage: {
-    width: width * 0.18,
-    height: width * 0.18,
-    borderRadius: width * 0.09,
-    backgroundColor: '#eee',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: theme.colors.divider,
   },
   name: {
-    color: 'white',
-    fontWeight: '900',
-    fontSize: width * 0.05,
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 20,
   },
   email: {
-    color: 'white',
-    fontSize: width * 0.04,
+    color: theme.colors.textSecondary,
+    fontSize: 14,
     marginTop: 2,
     flexWrap: 'wrap',
   },
   credits: {
-    color: 'white',
-    fontSize: width * 0.045,
+    color: theme.colors.primaryDark,
+    fontSize: 15,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: theme.spacing.xs,
+  },
+  profileDetails: {
+    flex: 1,
+    marginLeft: theme.spacing.md,
   },
   rowContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: height * 0.03,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xl,
   },
   statBox: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: height * 0.02,
-    marginHorizontal: 4,
-    borderRadius: 16,
-    backgroundColor: '#edeff1ff',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 3,
-    minHeight: height * 0.12,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.radii.control,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    minHeight: 104,
   },
   statNumber: {
-    fontSize: width * 0.07,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '700',
     marginBottom: 4,
-    color: '#4a5568',
+    color: theme.colors.textPrimary,
   },
   statLabel: {
-    fontSize: width * 0.035,
-    color: '#6b7280',
+    fontSize: 12,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   sectionTitle: {
-    fontSize: width * 0.045,
-    fontWeight: '900',
-    marginBottom: 8,
-    color: '#2d3748',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary,
   },
   option: {
-    backgroundColor: '#edeff1ff',
-    paddingVertical: height * 0.018,
-    paddingHorizontal: width * 0.04,
-    borderRadius: 14,
-    marginBottom: 6,
+    backgroundColor: theme.colors.surface,
+    minHeight: 56,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radii.control,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.sm,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-    elevation: 2,
+    gap: theme.spacing.md,
   },
-  optionArrow: {
-    fontSize: width * 0.05,
-    fontWeight: '700',
-    color: '#9ca3af',
+  optionLabel: {
+    flex: 1,
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
+  },
+  languageValue: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+  },
+  logoutOption: {
+    marginTop: theme.spacing.sm,
+  },
+  logoutText: {
+    color: '#C53030',
   },
   centeredContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: width * 0.06,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
   },
   message: {
-    fontSize: width * 0.04,
-    color: '#555',
+    fontSize: 15,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: height * 0.03,
+    marginBottom: theme.spacing.xl,
   },
   loginButton: {
-    backgroundColor: '#6d28d9',
-    paddingVertical: height * 0.018,
-    paddingHorizontal: width * 0.1,
-    borderRadius: 30,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xxl,
+    borderRadius: theme.radii.control,
     alignSelf: 'center',
-    shadowColor: '#6d28d9',
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 15,
-    elevation: 7,
   },
   loginText: {
     color: '#fff',
-    fontWeight: '900',
-    fontSize: width * 0.045,
+    fontWeight: '700',
+    fontSize: 15,
   },
   modalOverlay: {
     flex: 1,
@@ -468,6 +489,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-
-
-

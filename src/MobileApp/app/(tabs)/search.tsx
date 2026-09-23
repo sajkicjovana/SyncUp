@@ -23,6 +23,7 @@ import { API_URL as BASE_URL } from '../../config';
 import { useFavorites } from '../context/FavoriteContext';
 import { CompactEventCard } from '../../components/CompactEventCard';
 import { theme } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { searchUseCases } from '../../src/di/search';
 import { readAuthToken } from '../../src/di/auth';
@@ -42,6 +43,7 @@ interface LocationType {
 }
 
 const SearchScreen = () => {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { searchReturnKey: rawSearchReturnKey } = useLocalSearchParams<{
     searchReturnKey?: string | string[];
@@ -280,7 +282,7 @@ useEffect(() => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1 }}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
         <Text style={styles.header}>{t('search.header')}</Text>
 
         <View style={styles.searchInputContainer}>
