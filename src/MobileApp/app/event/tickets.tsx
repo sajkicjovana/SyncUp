@@ -28,6 +28,9 @@ export default function TicketPurchaseScreen() {
 
   // Događaj je besplatan ako nema karata
   const isFreeEvent = tickets.length === 0;
+  const hasSelectedTicket = Object.values(cart).some(quantity => quantity > 0);
+  const hasSelectedResource = selectedResources.size > 0;
+  const hasSelection = hasSelectedTicket || hasSelectedResource;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -212,8 +215,9 @@ export default function TicketPurchaseScreen() {
       )}
 
       <TouchableOpacity
-        style={styles.proceedButton}
+        style={[styles.proceedButton, !hasSelection && styles.proceedButtonDisabled]}
         onPress={handleProceed}
+        disabled={!hasSelection}
       >
         <Text style={styles.proceedText}>{t('tickets.proceed')}</Text>
       </TouchableOpacity>
@@ -320,6 +324,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: theme.spacing.lg,
     marginBottom: 50,
+  },
+  proceedButtonDisabled: {
+    backgroundColor: theme.colors.disabled,
   },
   proceedText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   backButton: { paddingVertical: theme.spacing.md, paddingHorizontal: 0 },
