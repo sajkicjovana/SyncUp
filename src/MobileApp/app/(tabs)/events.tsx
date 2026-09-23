@@ -5,8 +5,6 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -14,10 +12,11 @@ import { loadEvents } from '../../src/di/eventList';
 import type { EventListItem } from '../../src/domain/eventList';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AntDesign } from '@expo/vector-icons';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { readAuthToken } from '../../src/di/auth';
+import { EventCard } from '../../components/EventCard';
+import { theme } from '../../constants/theme';
 
 export default function EventsScreen() {
   const [events, setEvents] = useState<EventListItem[]>([]);
@@ -80,54 +79,37 @@ export default function EventsScreen() {
   const renderItem = ({ item }: { item: EventListItem }) => {
     const isFavorite = favorites.includes(item.id);
 
+    const dateTime = `${new Date(item.startDate).toLocaleDateString('sr-RS')} | ${
+      new Date(item.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }h`;
+
     return (
-      <TouchableOpacity
-        style={styles.card}
+      <EventCard
+        imageUri={`${API_URL}/${item.imageUrl}`}
+        imageLoading={Boolean(imageLoading[item.id])}
+        title={item.title}
+        dateTime={dateTime}
+        location={item.location}
+        isFavorite={isFavorite}
         onPress={() => router.push({ pathname: '../event/[id]', params: { id: item.id, from: 'events' } })}
-      >
-        <View style={styles.imageWrapper}>
-          {imageLoading[item.id] && (
-            <ActivityIndicator
-              size="large"
-              color="#007AFF"
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          <Image
-            source={{ uri: `${API_URL}/${item.imageUrl}` }}
-            style={styles.image}
-            onLoadStart={() =>
-              setImageLoading((prev) => ({ ...prev, [item.id]: true }))
-            }
-            onLoadEnd={() =>
-              setImageLoading((prev) => ({ ...prev, [item.id]: false }))
-            }
-          />
-        </View>
-
-        <Text style={styles.title}>{item.title}</Text>
-
-        <Text style={styles.info}>
-          🕒 {new Date(item.startDate).toLocaleDateString('sr-RS')} |{' '}
-          {new Date(item.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}h
-        </Text>
-        <View style={styles.row}>
-          <View style={styles.locationWrapper}>
-            <Text style={styles.info} numberOfLines={2}>📍 {item.location}</Text>
-          </View>
-          <TouchableOpacity onPress={() => handleToggleFavorite(item.id)}>
-            <AntDesign name="heart" size={20} color={isFavorite ? '#FF2D55' : '#ccc'} />
-          </TouchableOpacity>
-        </View>
-
-      </TouchableOpacity>
+        onToggleFavorite={() => handleToggleFavorite(item.id)}
+        favoriteAccessibilityLabel={
+          isFavorite ? t('removeFromFavorites') : t('addToFavorites')
+        }
+        onImageLoadStart={() =>
+          setImageLoading((prev) => ({ ...prev, [item.id]: true }))
+        }
+        onImageLoadEnd={() =>
+          setImageLoading((prev) => ({ ...prev, [item.id]: false }))
+        }
+      />
     );
   };
 
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ marginTop: 10 }}>{t('loadingEvents')}</Text>
       </View>
     );
@@ -154,81 +136,22 @@ export default function EventsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 40,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
   },
   header: {
     fontSize: 24,
-    fontWeight: '900',
-    marginBottom: 24,
+    fontWeight: '700',
+    marginBottom: theme.spacing.lg,
     textAlign: 'center',
-    color: '#1a202c',
+    color: theme.colors.textPrimary,
   },
   empty: {
     fontSize: 16,
-    color: '#6b7280',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 60,
-  },
-  card: {
-    backgroundColor: '#fefefe',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  imageWrapper: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#e5e7eb',
-    marginBottom: 10,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  info: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  row: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  attending: {
-    fontSize: 12,
-    backgroundColor: '#c084fc',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    color: '#fff',
-    fontWeight: '700',
-    overflow: 'hidden',
-  },
-  locationWrapper: {
-    flex: 1,
-    paddingRight: 8,
   },
 });
