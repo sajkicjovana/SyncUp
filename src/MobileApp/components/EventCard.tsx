@@ -16,6 +16,7 @@ type EventCardProps = {
   title: string;
   dateTime: string;
   location: string;
+  attendanceLabel?: string;
   isFavorite: boolean;
   onPress: () => void;
   onToggleFavorite: () => void;
@@ -30,6 +31,7 @@ export function EventCard({
   title,
   dateTime,
   location,
+  attendanceLabel,
   isFavorite,
   onPress,
   onToggleFavorite,
@@ -74,6 +76,12 @@ export function EventCard({
               {location}
             </Text>
           </View>
+
+          {attendanceLabel && (
+            <View style={styles.attendanceBadge}>
+              <Text style={styles.attendanceText}>{attendanceLabel}</Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.favoriteButton}
@@ -145,11 +153,23 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   locationRow: {
-    flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: theme.spacing.sm,
     paddingRight: theme.spacing.sm,
+  },
+  attendanceBadge: {
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radii.small,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    marginRight: theme.spacing.xs,
+  },
+  attendanceText: {
+    color: theme.colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '600',
   },
   metadata: {
     flex: 1,

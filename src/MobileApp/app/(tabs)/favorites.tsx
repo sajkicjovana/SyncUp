@@ -7,7 +7,6 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   BackHandler,
@@ -22,8 +21,10 @@ import {
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { ParamListBase } from '@react-navigation/native';
 import { useFavorites } from '../context/FavoriteContext';
-import { AntDesign, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { EventCard } from '../../components/EventCard';
+import { theme } from '../../constants/theme';
 
 export default function FavoritesScreen() {
   const { favorites, toggleFavorite } = useFavorites();
@@ -94,64 +95,49 @@ export default function FavoritesScreen() {
     checkAuthAndFetch();
   }, [favorites]);
 
-  const renderItem = ({ item }: { item: FavoriteEvent }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        router.push({
-          pathname: '../event/[id]',
-          params: {
-            id: item.id,
-            from: 'favorites',
-            ...(from === 'profile' ? { favoritesFrom: 'profile' } : {}),
-          },
-        })
-      }
-    >
-      <View style={styles.imageWrapper}>
-        {imageLoading[item.id] && (
-          <ActivityIndicator size="large" color="#007AFF" style={StyleSheet.absoluteFill} />
-        )}
-        <Image
-          source={{ uri: `${API_URL}/${item.imageUrl}` }}
-          style={styles.image}
-          onLoadStart={() =>
-            setImageLoading((prev) => ({ ...prev, [item.id]: true }))
-          }
-          onLoadEnd={() =>
-            setImageLoading((prev) => ({ ...prev, [item.id]: false }))
-          }
-        />
-      </View>
+  const renderItem = ({ item }: { item: FavoriteEvent }) => {
+    const dateTime = `${new Date(item.startDate).toLocaleDateString('sr-RS')} | ${
+      new Date(item.startDate).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    }h`;
 
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.info}>
-        🕒{' '}
-        {new Date(item.startDate).toLocaleDateString('en-US')} |{' '}
-        {new Date(item.startDate).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-        h
-      </Text>
-      <Text style={styles.info}>📍 {item.location}</Text>
-
-      <View style={styles.row}>
-        <Text style={styles.attending}>
-          {item.attendingCount === 0 ? '0' : `${item.attendingCount}+`} {t('attending')}
-        </Text>
-        <TouchableOpacity onPress={() => toggleFavorite(item.id)}>
-          <AntDesign name="heart" size={20} color="#FF2D55" />
-        </TouchableOpacity>
-      </View>
-
-    </TouchableOpacity>
-  );
+    return (
+      <EventCard
+        imageUri={`${API_URL}/${item.imageUrl}`}
+        imageLoading={Boolean(imageLoading[item.id])}
+        title={item.title}
+        dateTime={dateTime}
+        location={item.location}
+        attendanceLabel={`${item.attendingCount === 0 ? '0' : `${item.attendingCount}+`} ${t('attending')}`}
+        isFavorite
+        onPress={() =>
+          router.push({
+            pathname: '../event/[id]',
+            params: {
+              id: item.id,
+              from: 'favorites',
+              ...(from === 'profile' ? { favoritesFrom: 'profile' } : {}),
+            },
+          })
+        }
+        onToggleFavorite={() => toggleFavorite(item.id)}
+        favoriteAccessibilityLabel={t('removeFromFavorites')}
+        onImageLoadStart={() =>
+          setImageLoading((prev) => ({ ...prev, [item.id]: true }))
+        }
+        onImageLoadEnd={() =>
+          setImageLoading((prev) => ({ ...prev, [item.id]: false }))
+        }
+      />
+    );
+  };
 
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ marginTop: 10 }}>{t('loadingFavorites')}</Text>
       </View>
     );
@@ -193,95 +179,41 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 40,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
   },
   header: {
     fontSize: 24,
-    fontWeight: '900',
-    marginBottom: 24,
+    fontWeight: '700',
+    marginBottom: theme.spacing.lg,
     textAlign: 'center',
-    color: '#1a202c',
+    color: theme.colors.textPrimary,
   },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: theme.spacing.lg,
   },
   backButton: {
-    marginRight: 12,
-    padding: 6,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileOriginHeader: {
     flex: 1,
-    marginRight: 40,
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
-    color: '#1a202c',
+    color: theme.colors.textPrimary,
+    marginRight: 44,
   },
   empty: {
     fontSize: 16,
-    color: '#6b7280',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 60,
-  },
-  card: {
-    backgroundColor: '#fefefe',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  imageWrapper: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#e5e7eb',
-    marginBottom: 10,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  info: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  row: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  attending: {
-    fontSize: 12,
-    backgroundColor: '#c084fc',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    color: '#fff',
-    fontWeight: '700',
-    overflow: 'hidden',
   },
 });
