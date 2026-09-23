@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Credentials } from '../../domain/auth';
-import type { AuthGateway, ChangePasswordGateway, LoginResult, SessionStore } from './ports';
-import { createChangePassword, createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
+import type { AuthGateway, ChangePasswordGateway, LoginResult, RegisterUserGateway, RegistrationInput, SessionStore } from './ports';
+import { createChangePassword, createRegisterUser, createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
 
 const credentials: Credentials = { email: 'demo@example.test', password: 'Abcdef1!' };
 const passwords = { currentPassword: 'Current1!', newPassword: 'NewPass2!' };
+const registration: RegistrationInput = {
+  firstName: ' Demo ',
+  lastName: ' User ',
+  email: ' demo@example.test ',
+  password: ' Abcdef1! ',
+  confirmPassword: ' Abcdef1! ',
+};
 
 function setup(initialToken: string | null = null) {
   let token = initialToken;
@@ -232,6 +239,75 @@ test('password recovery propagates the original gateway error', async () => {
   const error = new SyntaxError('Invalid JSON');
   fake.gateway.requestPasswordReset = async () => { throw error; };
   await assert.rejects(createRequestPasswordRecovery(fake.gateway)('person@example.test'), (caught) => caught === error);
+});
+
+test('registration forwards the exact semantic input once and preserves success', async () => {
+  const calls: RegistrationInput[] = [];
+  const gateway: RegisterUserGateway = {
+    async registerUser(input) {
+      calls.push(input);
+      return { ok: true };
+    },
+  };
+
+  assert.deepEqual(await createRegisterUser(gateway)(registration), { status: 'registered' });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0], registration);
+});
+
+test('registration preserves a backend rejection message', async () => {
+  const gateway: RegisterUserGateway = {
+    async registerUser() {
+      return { ok: false, message: 'Rejected' };
+    },
+  };
+
+  assert.deepEqual(await createRegisterUser(gateway)(registration), {
+    status: 'rejected',
+    message: 'Rejected',
+  });
+});
+
+test('registration preserves rejection messages without a usable value', async () => {
+  for (const message of ['', undefined] as const) {
+    const gateway: RegisterUserGateway = {
+      async registerUser() {
+        return { ok: false, message };
+      },
+    };
+
+    assert.deepEqual(await createRegisterUser(gateway)(registration), {
+      status: 'rejected',
+      message,
+    });
+  }
+});
+
+test('registration propagates the original gateway failure without retrying', async () => {
+  const error = new SyntaxError('Invalid JSON');
+  let calls = 0;
+  const gateway: RegisterUserGateway = {
+    async registerUser() {
+      calls += 1;
+      throw error;
+    },
+  };
+
+  await assert.rejects(createRegisterUser(gateway)(registration), (caught) => caught === error);
+  assert.equal(calls, 1);
+});
+
+test('registration has no session or unrelated Auth workflow dependency', async () => {
+  const calls: string[] = [];
+  const gateway: RegisterUserGateway = {
+    async registerUser() {
+      calls.push('register');
+      return { ok: true };
+    },
+  };
+
+  await createRegisterUser(gateway)(registration);
+  assert.deepEqual(calls, ['register']);
 });
 
 test('password change reads the token once and forwards exact input on success', async () => {

@@ -17,6 +17,18 @@ export type ChangePasswordGatewayResult =
   | { ok: true }
   | { ok: false; message?: unknown };
 
+export type RegistrationInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
+
+export type RegistrationGatewayResult =
+  | { ok: true }
+  | { ok: false; message?: unknown };
+
 export interface AuthGateway {
   login(credentials: Credentials): Promise<LoginResult>;
   isMobileUser(token: string): Promise<boolean>;
@@ -25,6 +37,10 @@ export interface AuthGateway {
 
 export interface ChangePasswordGateway {
   changePassword(token: string, input: ChangePasswordInput): Promise<ChangePasswordGatewayResult>;
+}
+
+export interface RegisterUserGateway {
+  registerUser(input: RegistrationInput): Promise<RegistrationGatewayResult>;
 }
 
 export interface SessionStore {

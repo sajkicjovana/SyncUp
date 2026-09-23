@@ -7,6 +7,8 @@ import type {
   NowSeconds,
   ReadAuthToken,
   ReadTokenExpiry,
+  RegisterUserGateway,
+  RegistrationInput,
   SessionStore,
 } from './ports';
 
@@ -38,6 +40,18 @@ export function createSignIn(gateway: AuthGateway, store: SessionStore) {
 }
 export function createRequestPasswordRecovery(gateway: AuthGateway) {
   return (email: string) => gateway.requestPasswordReset(email);
+}
+
+export type RegisterUserResult =
+  | { status: 'registered' }
+  | { status: 'rejected'; message?: unknown };
+
+export function createRegisterUser(gateway: RegisterUserGateway) {
+  return async (input: RegistrationInput): Promise<RegisterUserResult> => {
+    const result = await gateway.registerUser(input);
+    if (!result.ok) return { status: 'rejected', message: result.message };
+    return { status: 'registered' };
+  };
 }
 
 export type ChangePasswordResult =

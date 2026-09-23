@@ -1,7 +1,11 @@
 import { API_URL, apiCall } from '../../../config';
-import type { AuthGateway, ChangePasswordGateway } from '../../application/auth/ports';
+import type {
+  AuthGateway,
+  ChangePasswordGateway,
+  RegisterUserGateway,
+} from '../../application/auth/ports';
 
-export const httpAuthGateway: AuthGateway & ChangePasswordGateway = {
+export const httpAuthGateway: AuthGateway & ChangePasswordGateway & RegisterUserGateway = {
   async login({ email, password }) {
     const response = await apiCall(`${API_URL}/api/User/login`, {
       method: 'POST',
@@ -34,6 +38,26 @@ export const httpAuthGateway: AuthGateway & ChangePasswordGateway = {
     if (!response.ok) {
       const data: any = await response.json();
       return { ok: false, message: data.message ? String(data.message) : undefined };
+    }
+    return { ok: true };
+  },
+  async registerUser({ firstName, lastName, email, password, confirmPassword }) {
+    const response = await apiCall(`${API_URL}/api/User/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email,
+        password,
+        confirmPassword,
+        role: 'MobileUser',
+      }),
+    });
+
+    if (!response.ok) {
+      const data: any = await response.json();
+      return { ok: false, message: data.message };
     }
     return { ok: true };
   },

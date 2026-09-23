@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'expo-router';
 import { router } from 'expo-router';
 import { Animated } from 'react-native';
-import { API_URL } from '../config';
-import { apiCall } from '../config';
 
 import {
   View,
@@ -14,8 +12,8 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { registerUser } from '../src/di/auth';
 
 export default function SignUpScreen() {
   const { t } = useTranslation();
@@ -65,22 +63,16 @@ export default function SignUpScreen() {
     }
 
     try {
-      const response = await apiCall(`${API_URL}/api/User/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-          confirmPassword,
-          role: 'MobileUser',
-        }),
+      const result = await registerUser({
+        firstName,
+        lastName,
+        email,
+        password,
+        confirmPassword,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || t('genericError'));
+      if (result.status === 'rejected') {
+        throw new Error((result.message as string) || t('genericError'));
       }
 
       Alert.alert(t('success'), t('accountCreated'), [
