@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { API_URL } from '../../config';
 import { MaterialIcons } from '@expo/vector-icons';
-import { apiCall } from '../../config';
 import { WebView } from 'react-native-webview';
 import {
   View,
@@ -28,6 +27,7 @@ import { eventPinsUseCases } from '../../src/di/eventPins';
 import { geocodeLocation as geocodeEventLocation } from '../../src/di/eventLocation';
 import { loadEventResources } from '../../src/di/eventResources';
 import { favoritesUseCases } from '../../src/di/favorites';
+import { loadPersonalInfo } from '../../src/di/profile';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
 import type { EventPin, PinCategory } from '../../src/domain/eventPins';
@@ -355,9 +355,9 @@ useEffect(() => {
 
 const checkUserProfile = async () => {
   try {
-    const token = await AsyncStorage.getItem('token');
+    const result = await loadPersonalInfo();
 
-    if (!token) {
+    if (result.status === 'missing-token') {
   Alert.alert(
     t('auth.notLoggedInTitle'),     
     t('auth.notLoggedInMessage'),    
@@ -375,19 +375,11 @@ const checkUserProfile = async () => {
   return false;
 }
 
-
-    const response = await apiCall(`${API_URL}/api/MobileUser/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
+    if (result.status === 'non-ok') {
       throw new Error('Greška prilikom učitavanja profila');
     }
 
-    const user = await response.json();
-    const { firstName, lastName, email } = user;
+    const { firstName, lastName, email } = result.profile;
 
     if (!firstName || !lastName || !email) {
       Alert.alert(

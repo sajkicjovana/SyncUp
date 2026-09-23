@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { apiCall } from '../../config';
 import {
   View,
   Text,
@@ -12,12 +11,12 @@ import {
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { API_URL } from '../../config';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { loadPersonalInfo } from '../../src/di/profile';
 
 type TicketType = {
   id: number;
@@ -81,19 +80,14 @@ if (purchasedAt) {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
+        const result = await loadPersonalInfo();
+        if (result.status === 'missing-token') {
           setLoading(false);
           return;
         }
 
-        const res = await apiCall(`${API_URL}/api/MobileUser/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) throw new Error('Failed to fetch user');
-        const data = await res.json();
-        setFullName(`${data.firstName} ${data.lastName}`);
+        if (result.status === 'non-ok') throw new Error('Failed to fetch user');
+        setFullName(`${result.profile.firstName} ${result.profile.lastName}`);
       } catch (err) {
         console.error(err);
       } finally {
