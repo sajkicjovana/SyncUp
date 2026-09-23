@@ -28,6 +28,7 @@ import { loadEventResources } from '../../src/di/eventResources';
 import { favoritesUseCases } from '../../src/di/favorites';
 import { loadPersonalInfo } from '../../src/di/profile';
 import { readAuthToken } from '../../src/di/auth';
+import { theme } from '../../constants/theme';
 import type { EventAgendaResponse } from '../../src/domain/eventAgenda';
 import type { EventDetails } from '../../src/domain/eventDetails';
 import type { EventPin, PinCategory } from '../../src/domain/eventPins';
@@ -520,7 +521,7 @@ const handleAction = async () => {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={{ marginTop: 10 }}>{t('loading')}</Text>
       </View>
     );
@@ -550,11 +551,9 @@ const handleAction = async () => {
 
 
 
-      <Text style={styles.naslov}>{t('aboutEvent')}</Text>
-
       <View style={styles.imageWrapper}>
         {imageLoading && (
-          <ActivityIndicator size="large" color="#2563EB" style={StyleSheet.absoluteFill} />
+          <ActivityIndicator size="large" color={theme.colors.primary} style={StyleSheet.absoluteFill} />
         )}
         <Image
           source={{ uri: `${API_URL}/${event.imageUrl}` }}
@@ -563,53 +562,75 @@ const handleAction = async () => {
         />
       </View>
 
-      <Text style={styles.title}>{event.title}</Text>
-   <Text style={styles.date}>
-      📅{' '}
-      {new Date(event.startDate).toLocaleDateString(
-        i18n.language === 'sr' ? 'sr-Latn' : i18n.language,
-        {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        }
-      )}
-    </Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{event.title}</Text>
+        <TouchableOpacity
+          style={styles.favoriteBtn}
+          onPress={toggleFavorite}
+          activeOpacity={0.7}
+          disabled={updatingFavorite}
+          accessibilityRole="button"
+          accessibilityLabel={event.isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
+        >
+          <Ionicons
+            name={event.isFavorite ? 'heart' : 'heart-outline'}
+            size={24}
+            color={event.isFavorite ? theme.colors.favorite : theme.colors.textMuted}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.metadataRow}>
+        <Ionicons name="calendar-outline" size={18} color={theme.colors.textMuted} />
+        <Text style={styles.date}>
+          {new Date(event.startDate).toLocaleDateString(
+            i18n.language === 'sr' ? 'sr-Latn' : i18n.language,
+            {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }
+          )}
+        </Text>
+      </View>
+      <View style={styles.metadataRow}>
+        <Ionicons name="location-outline" size={18} color={theme.colors.textMuted} />
+        <Text style={styles.location}>{event.location}</Text>
+      </View>
 
       <View style={styles.infoCard}>
-        <Text style={styles.info}>
-          🕒 {t('time')}: {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}h -{' '}
-          {new Date(event.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}h
-        </Text>
-        <Text style={styles.info}>📍 {t('location')}: {event.location}</Text>
-        <Text style={styles.info}>🏢 {t('organizer')}: {event.organizerName}</Text>
+        <View style={styles.infoRow}>
+          <Ionicons name="time-outline" size={20} color={theme.colors.primaryDark} />
+          <View style={styles.infoText}>
+            <Text style={styles.infoLabel}>{t('time')}</Text>
+            <Text style={styles.infoValue}>
+              {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}h -{' '}
+              {new Date(event.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}h
+            </Text>
+          </View>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="business-outline" size={20} color={theme.colors.primaryDark} />
+          <View style={styles.infoText}>
+            <Text style={styles.infoLabel}>{t('organizer')}</Text>
+            <Text style={styles.infoValue}>{event.organizerName}</Text>
+          </View>
+        </View>
         {!event.isFree && event.minPrice != null && event.maxPrice != null && (
-          <Text style={styles.info}>
-            💸 {t('price')}: {event.minPrice === event.maxPrice ? `${event.minPrice} RSD` : `${event.minPrice} - ${event.maxPrice} RSD`}
-          </Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="cash-outline" size={20} color={theme.colors.primaryDark} />
+            <View style={styles.infoText}>
+              <Text style={styles.infoLabel}>{t('price')}</Text>
+              <Text style={styles.infoValue}>
+                {event.minPrice === event.maxPrice ? `${event.minPrice} RSD` : `${event.minPrice} - ${event.maxPrice} RSD`}
+              </Text>
+            </View>
+          </View>
         )}
       </View>
 
    <View style={styles.actions}>
-  {/* Favorite dugme */}
-  <TouchableOpacity
-    style={styles.favoriteBtn}
-    onPress={toggleFavorite}
-    activeOpacity={0.7}
-    disabled={updatingFavorite}
-  >
-    <Ionicons
-      name={event.isFavorite ? 'heart' : 'heart-outline'}
-      size={24}
-      color={event.isFavorite ? '#FF2D55' : '#2563EB'}
-    />
-    <Text style={[styles.favoriteText, { color: event.isFavorite ? '#FF2D55' : '#2563EB' }]}>
-      {event.isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
-    </Text>
-  </TouchableOpacity>
-
-  {/* Dugme za kupovinu / rezervaciju */}
 <TouchableOpacity
   onPress={handleAction}
   style={[
@@ -634,7 +655,7 @@ const handleAction = async () => {
 
 </View>
 
-      <Text style={styles.sectionTitle}>{t('eventDescription')}</Text>
+      <Text style={styles.descriptionTitle}>{t('eventDescription')}</Text>
       <Text style={styles.description}>{event.description}</Text>
 {!agendaLoading && !agendaError && agendaData && (
   <>
@@ -735,15 +756,15 @@ const handleAction = async () => {
     style={{
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#2563EB',
-      paddingVertical: 6,
-      paddingHorizontal: 10,
+      backgroundColor: theme.colors.primary,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
       borderRadius: 8,
     }}
   >
     <MaterialIcons
       name={mapType === 'standard' ? 'satellite' : 'map'}
-      size={20}
+      size={18}
       color="#fff"
       style={{ marginRight: 6 }}
     />
@@ -789,7 +810,10 @@ const handleAction = async () => {
 
     {/* ---------------- LEGENDA ---------------- */}
     <View style={styles.legendWrapper}>
-      <Text style={styles.legendTitle}>📍 {t('Legend')}</Text>
+      <View style={styles.legendHeading}>
+        <Ionicons name="location-outline" size={18} color={theme.colors.primaryDark} />
+        <Text style={styles.legendTitle}>{t('Legend')}</Text>
+      </View>
       {Array.from(new Set(eventPins.map((pin) => pin.pinCategory))).map((catId) => {
       const category = pinCategories.find((c) => c.id === catId);
       return (
@@ -822,15 +846,9 @@ const handleAction = async () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background,
     padding: 20,
-    marginBottom:30
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 10,
+    marginBottom: 30,
   },
   center: {
     flex: 1,
@@ -842,10 +860,9 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 16,
     marginBottom: 20,
-    marginTop: 40,
+    marginTop: 12,
     overflow: 'hidden',
-    elevation: 4,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: theme.colors.divider,
   },
   image: {
     width: '100%',
@@ -853,101 +870,117 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1f2937',
-    marginBottom: 8,
-  },
-  naslov:{
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1f2937',
-    marginBottom: 8,
-    textAlign:'center'
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
   },
   date: {
-    fontSize: 16,
-    color: '#6B7280',
+    flex: 1,
+    fontSize: 15,
+    color: theme.colors.textSecondary,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
+    gap: 8,
+  },
+  metadataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  location: {
+    flex: 1,
+    fontSize: 15,
+    color: theme.colors.textSecondary,
   },
   infoCard: {
-    backgroundColor: '#edeff1ff',
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-  info: {
-    fontSize: 15,
-    marginBottom: 6,
-    color: '#374151',
-    lineHeight: 22,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: 12,
+    borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginTop: 8,
     marginBottom: 20,
     gap: 10,
+    shadowColor: theme.shadow.color,
+    shadowOpacity: theme.shadow.opacity,
+    shadowOffset: theme.shadow.offset,
+    shadowRadius: theme.shadow.radius,
+    elevation: theme.shadow.elevation,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  infoText: {
+    flex: 1,
+    gap: 2,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    fontWeight: '600',
+  },
+  infoValue: {
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+    lineHeight: 21,
+  },
+  actions: {
+    alignItems: 'stretch',
+    marginBottom: 10,
   },
   favoriteBtn: {
-    flexDirection: 'row',
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  favoriteText: {
-    fontWeight: '600',
-    marginLeft: 8,
-    fontSize: 16,
-  },
-  buyBtn: {
-    backgroundColor: '#2563EB',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-  },
-  buyBtnDisabled: {
-    backgroundColor: '#d1d5db',
-  },
-  buyText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '700',
     marginBottom: 12,
     marginTop: 28,
-    color: '#111827',
+    color: theme.colors.textPrimary,
+  },
+  descriptionTitle: {
+    fontSize: 21,
+    fontWeight: '700',
+    marginBottom: 12,
+    marginTop: 20,
+    color: theme.colors.textPrimary,
   },
   description: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#4B5563',
+    color: theme.colors.textSecondary,
   },
   scheduleItem: {
-    backgroundColor: '#F3F4F6',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    padding: 14,
+    borderRadius: theme.radii.control,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     marginBottom: 12,
   },
   scheduleTime: {
     fontWeight: 'bold',
     fontSize: 14,
     marginBottom: 4,
-    color: '#1f2937',
+    color: theme.colors.primaryDark,
   },
   scheduleTitle: {
     fontSize: 14,
-    color: '#111827',
+    color: theme.colors.textPrimary,
   },
   scheduleDesc: {
     fontSize: 13,
-    color: '#6B7280',
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   map: {
@@ -962,42 +995,53 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 5,
     marginBottom: -10,
-    paddingTop:30
+    paddingTop: 20,
   },
   backText: {
     fontSize: 16,
-    color: '#111827',
+    color: theme.colors.textPrimary,
   },
   buyButton: {
-  backgroundColor: '#007AFF',
-  paddingVertical: 10,
-  paddingHorizontal: 20,
-  borderRadius: 8,
-  alignItems: 'center',
-},
-buyButtonText: {
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: 16,
-},
+    width: '100%',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: theme.radii.control,
+    alignItems: 'center',
+  },
+  buyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
   mapWrapper: {
     width: '100%',
     height: screen.height * 0.35,
     borderRadius: 15,
     overflow: 'hidden',
-    backgroundColor: '#dfe5f3',
+    backgroundColor: theme.colors.divider,
     marginTop: 10,
   },
   legendWrapper: {
     marginTop: 20,
-    marginBottom: 40, // veći bottom padding da se ne seče
-    paddingHorizontal: 10,
+    marginBottom: 40,
+    padding: 16,
+    borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   legendTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#111827',
+    color: theme.colors.textPrimary,
+  },
+  legendHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
   legendItem: {
     flexDirection: 'row',
@@ -1011,7 +1055,7 @@ buyButtonText: {
   },
   legendText: {
     fontSize: 14,
-    color: '#374151',
+    color: theme.colors.textSecondary,
   },
 
 });
