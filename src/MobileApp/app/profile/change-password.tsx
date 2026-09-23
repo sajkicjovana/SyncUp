@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import { API_URL } from '../../config';
-import { apiCall } from '../../config';
+import { changePassword } from '../../src/di/auth';
 import {
   View,
   Text,
@@ -11,7 +10,6 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -64,8 +62,8 @@ const handleChangePassword = async () => {
   }
 
   try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) {
+    const result = await changePassword({ currentPassword, newPassword });
+    if (result.status === 'missing-token') {
       Alert.alert(
         t('changePassword.error'),
         t('changePassword.notLoggedIn')
@@ -73,28 +71,7 @@ const handleChangePassword = async () => {
       return;
     }
 
-    const res = await apiCall(`${API_URL}/api/User/change-password`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        currentPassword,
-        newPassword,
-      }),
-    });
-
-    // Sigurno parsiranje odgovora (JSON ili plain text)
-    let data: any;
-    const raw = await res.text();
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      data = { message: raw };
-    }
-
-    if (res.ok) {
+    if (result.status === 'changed') {
       Alert.alert(
         t('changePassword.success'),
         t('changePassword.passwordChanged')
@@ -105,12 +82,13 @@ const handleChangePassword = async () => {
       router.push('../(tabs)/profile');
     } else {
       // mapiranje poruka na lokalizovane stringove
-      let message = data.message;
+      const backendMessage = result.message as any;
+      let message = backendMessage;
 
-      if (data.message === "The current password is incorrect.") {
+      if (backendMessage === "The current password is incorrect.") {
         message = t('changePassword.currentPasswordIncorrect');
       } else if (
-        data.message?.includes("The new password must be at least 8 characters long")
+        backendMessage?.includes("The new password must be at least 8 characters long")
       ) {
         message = t('changePassword.invalidPasswordMessage');
       }

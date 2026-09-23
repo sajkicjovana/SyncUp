@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Credentials } from '../../domain/auth';
-import type { AuthGateway, LoginResult, SessionStore } from './ports';
-import { createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
+import type { AuthGateway, ChangePasswordGateway, LoginResult, SessionStore } from './ports';
+import { createChangePassword, createRequestPasswordRecovery, createRestoreSession, createSignIn, discardSession } from './useCases';
 
 const credentials: Credentials = { email: 'demo@example.test', password: 'Abcdef1!' };
+const passwords = { currentPassword: 'Current1!', newPassword: 'NewPass2!' };
 
 function setup(initialToken: string | null = null) {
   let token = initialToken;
@@ -231,4 +232,84 @@ test('password recovery propagates the original gateway error', async () => {
   const error = new SyntaxError('Invalid JSON');
   fake.gateway.requestPasswordReset = async () => { throw error; };
   await assert.rejects(createRequestPasswordRecovery(fake.gateway)('person@example.test'), (caught) => caught === error);
+});
+
+test('password change reads the token once and forwards exact input on success', async () => {
+  const calls: string[] = [];
+  const input = { currentPassword: ' Current1! ', newPassword: ' NewPass2! ' };
+  const gateway: ChangePasswordGateway = {
+    async changePassword(token, received) {
+      calls.push('change');
+      assert.equal(token, 'stored-token');
+      assert.deepEqual(received, input);
+      return { ok: true };
+    },
+  };
+  const changePassword = createChangePassword(gateway, async () => {
+    calls.push('read');
+    return 'stored-token';
+  });
+
+  assert.deepEqual(await changePassword(input), { status: 'changed' });
+  assert.deepEqual(calls, ['read', 'change']);
+});
+
+for (const token of [null, ''] as const) {
+  test(`password change with ${token === null ? 'null' : 'empty'} token skips the gateway`, async () => {
+    let reads = 0;
+    const gateway: ChangePasswordGateway = {
+      async changePassword() {
+        assert.fail('gateway must not be called');
+      },
+    };
+    const changePassword = createChangePassword(gateway, async () => {
+      reads += 1;
+      return token;
+    });
+
+    assert.deepEqual(await changePassword(passwords), { status: 'missing-token' });
+    assert.equal(reads, 1);
+  });
+}
+
+test('password change preserves backend rejection messages, including falsy values', async () => {
+  for (const message of ['Rejected', '', undefined] as const) {
+    const gateway: ChangePasswordGateway = {
+      async changePassword() {
+        return { ok: false, message };
+      },
+    };
+    assert.deepEqual(
+      await createChangePassword(gateway, async () => 'stored-token')(passwords),
+      { status: 'rejected', message },
+    );
+  }
+});
+
+test('password change propagates the original token-read error without calling the gateway', async () => {
+  const error = new Error('Read failed');
+  const gateway: ChangePasswordGateway = {
+    async changePassword() {
+      assert.fail('gateway must not be called');
+    },
+  };
+
+  await assert.rejects(
+    createChangePassword(gateway, async () => { throw error; })(passwords),
+    (caught) => caught === error,
+  );
+});
+
+test('password change propagates the original gateway error', async () => {
+  const error = new Error('Request failed');
+  const gateway: ChangePasswordGateway = {
+    async changePassword() {
+      throw error;
+    },
+  };
+
+  await assert.rejects(
+    createChangePassword(gateway, async () => 'stored-token')(passwords),
+    (caught) => caught === error,
+  );
 });

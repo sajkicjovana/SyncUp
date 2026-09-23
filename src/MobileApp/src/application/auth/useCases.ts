@@ -1,6 +1,14 @@
 import { isSessionUnexpired, validateCredentials } from '../../domain/auth';
 import type { CredentialError, Credentials } from '../../domain/auth';
-import type { AuthGateway, NowSeconds, ReadTokenExpiry, SessionStore } from './ports';
+import type {
+  AuthGateway,
+  ChangePasswordGateway,
+  ChangePasswordInput,
+  NowSeconds,
+  ReadAuthToken,
+  ReadTokenExpiry,
+  SessionStore,
+} from './ports';
 
 export type SignInResult =
   | { status: 'invalid-credentials'; reason: CredentialError }
@@ -30,6 +38,25 @@ export function createSignIn(gateway: AuthGateway, store: SessionStore) {
 }
 export function createRequestPasswordRecovery(gateway: AuthGateway) {
   return (email: string) => gateway.requestPasswordReset(email);
+}
+
+export type ChangePasswordResult =
+  | { status: 'missing-token' }
+  | { status: 'changed' }
+  | { status: 'rejected'; message?: unknown };
+
+export function createChangePassword(
+  gateway: ChangePasswordGateway,
+  readToken: ReadAuthToken,
+) {
+  return async (input: ChangePasswordInput): Promise<ChangePasswordResult> => {
+    const token = await readToken();
+    if (!token) return { status: 'missing-token' };
+
+    const result = await gateway.changePassword(token, input);
+    if (!result.ok) return { status: 'rejected', message: result.message };
+    return { status: 'changed' };
+  };
 }
 
 
