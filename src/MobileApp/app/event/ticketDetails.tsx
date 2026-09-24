@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
+  BackHandler,
   View,
   Text,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useLocalSearchParams } from 'expo-router';
@@ -37,6 +39,25 @@ export default function TicketDetails() {
   const [fullName, setFullName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const svgRefs = useRef<Array<any>>([]);
+  const isPurchaseOrigin = from !== 'myTickets' && from !== 'reservationDetails';
+
+  const handleBack = useCallback(() => {
+    if (isPurchaseOrigin) router.dismissTo('/(tabs)/events');
+    else router.back();
+  }, [isPurchaseOrigin, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android' || !isPurchaseOrigin) return;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleBack();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [handleBack, isPurchaseOrigin])
+  );
 
   // Parsiranje ID-eva karata
   let ids: number[] = [];
@@ -168,7 +189,7 @@ if (purchasedAt) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top + theme.spacing.sm }}>
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.header}>{t('ticketDetails.title')}</Text>
