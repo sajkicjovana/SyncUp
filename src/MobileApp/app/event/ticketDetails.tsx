@@ -240,7 +240,7 @@ if (purchasedAt) {
         onPress={() => {
           if (from === 'reservationDetails') router.back();
           else if (from === 'myTickets') router.back();
-          else router.replace('/(tabs)/events'); 
+          else router.dismissTo('/(tabs)/events');
         }}
       >
         <Text style={styles.backToEventsText}>
