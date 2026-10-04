@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../../config';
-import { apiCall } from '../../config';
 import {
   View,
   Text,
@@ -19,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { API_URL as BASE_URL } from '../../config';
 import { useFavorites } from '../context/FavoriteContext';
 import { CompactEventCard } from '../../components/CompactEventCard';
 import { theme } from '../../constants/theme';
@@ -35,7 +33,6 @@ import {
   consumeSearchReturnState,
   type SearchReturnSnapshot,
 } from '../../src/presentation/search/searchReturnState';
-const DETAILS_API_URL = `${BASE_URL}/api/Events/Details`;
 
 interface LocationType {
   label: string;
@@ -133,22 +130,7 @@ const SearchScreen = () => {
     }
   };
 
-  const fetchEventDetailsPrice = async (eventId: number) => {
-    try {
-      const response = await apiCall(`${DETAILS_API_URL}?id=${eventId}`);
-      if (!response.ok) throw new Error('Failed to fetch event details');
-      const data = await response.json();
-      setEventPrices(prev => ({
-        ...prev,
-        [eventId]: {
-          minPrice: data.minPrice ?? null,
-          maxPrice: data.maxPrice ?? null,
-        },
-      }));
-    } catch (error) {
-      console.error('Error fetching event details for price:', error);
-    }
-  };
+
 
 const fetchEvents = useCallback(async () => {
   setLoading(true);

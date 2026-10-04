@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { API_URL } from '../../../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { httpEventResourcesGateway } from './HttpEventResourcesGateway';
 
@@ -36,7 +37,7 @@ test('resource loading builds the exact URL and Authorization header', async () 
 
   assert.equal(result, resources);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].input, 'http://localhost:11061/api/Resource/42/resources');
+  assert.equal(calls[0].input,`${API_URL}/api/Resource/42/resources`);
   assert.deepEqual(calls[0].init, {
     headers: {
       Authorization: 'Bearer token-value',

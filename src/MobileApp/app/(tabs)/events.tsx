@@ -11,7 +11,6 @@ import {
 import { loadEvents } from '../../src/di/eventList';
 import type { EventListItem } from '../../src/domain/eventList';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFavorites } from '../context/FavoriteContext';
 import { useTranslation } from 'react-i18next';
 import { readAuthToken } from '../../src/di/auth';
@@ -25,7 +24,7 @@ export default function EventsScreen() {
   const [loading, setLoading] = useState(true);
   const [imageLoading, setImageLoading] = useState<{ [key: number]: boolean }>({});
   const router = useRouter();
-  const { favorites, toggleFavorite, clearFavorites } = useFavorites();
+  const { favorites, toggleFavorite } = useFavorites();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -71,12 +70,7 @@ export default function EventsScreen() {
     await toggleFavorite(eventId);
   };
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
-    clearFavorites();
-    Alert.alert(t('loggedOut'), t('youHaveBeenLoggedOut'));
-    router.replace('/login');
-  };
+
 
   const renderItem = ({ item }: { item: EventListItem }) => {
     const isFavorite = favorites.includes(item.id);
